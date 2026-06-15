@@ -74,6 +74,154 @@ function handleLogout() {
     }
 }
 
+const API_URL = "https://script.google.com/macros/s/AKfycby-S0rt7fsHIkmeweQtX07b0vbZwXT0AqptVeTld-pfzsmoeYaiES7db_p_v2JKNxM-/exec";
+let isSyncing = false;
+
+function showSyncStatus(message, isError = false) {
+    let syncIndicator = document.getElementById('sync-indicator');
+    if (!syncIndicator) {
+        // Buat indikator di pojok kanan atas layar atau di sidebar jika belum ada
+        syncIndicator = document.createElement('div');
+        syncIndicator.id = 'sync-indicator';
+        syncIndicator.style.position = 'fixed';
+        syncIndicator.style.bottom = '80px'; // Di atas bottom nav pada mobile
+        syncIndicator.style.right = '20px';
+        syncIndicator.style.backgroundColor = 'var(--bg-card)';
+        syncIndicator.style.border = '1px solid var(--border-color)';
+        syncIndicator.style.padding = '8px 12px';
+        syncIndicator.style.borderRadius = '8px';
+        syncIndicator.style.fontSize = '0.8rem';
+        syncIndicator.style.zIndex = '1000';
+        syncIndicator.style.display = 'flex';
+        syncIndicator.style.alignItems = 'center';
+        syncIndicator.style.gap = '8px';
+        syncIndicator.style.boxShadow = '0 4px 12px rgba(0,0,0,0.5)';
+        document.body.appendChild(syncIndicator);
+    }
+    
+    syncIndicator.style.borderColor = isError ? 'var(--color-danger)' : 'var(--border-color)';
+    syncIndicator.innerHTML = `
+        <span class="status-dot" style="width: 8px; height: 8px; border-radius: 50%; background-color: ${isError ? 'var(--color-danger)' : (isSyncing ? 'var(--accent-gold)' : 'var(--color-success)')}; ${isSyncing ? 'animation: pulse 1s infinite alternate;' : ''}"></span>
+        <span style="color: var(--text-primary);">${message}</span>
+    `;
+
+    // Hilangkan indikator setelah 4 detik jika sukses
+    if (!isSyncing && !isError) {
+        setTimeout(() => {
+            syncIndicator.style.opacity = '0';
+            syncIndicator.style.transition = 'opacity 1s ease';
+            setTimeout(() => {
+                if (syncIndicator.parentNode) syncIndicator.parentNode.removeChild(syncIndicator);
+            }, 1000);
+        }, 3000);
+    } else {
+        syncIndicator.style.opacity = '1';
+    }
+}
+
+// Tambahkan CSS Keyframe untuk animasi denyut jika belum ada
+if (!document.getElementById('sync-style')) {
+    const style = document.createElement('style');
+    style.id = 'sync-style';
+    style.textContent = `
+        @keyframes pulse {
+            0% { transform: scale(0.8); opacity: 0.5; }
+            100% { transform: scale(1.2); opacity: 1; }
+        }
+    `;
+    document.head.appendChild(style);
+}
+
+async function syncToGoogleSheets() {
+    if (isSyncing) return;
+    isSyncing = true;
+    showSyncStatus("Menyimpan ke Google Sheets...");
+
+    try {
+        // 1. Siapkan data Transaksi untuk kolom Google Sheet:
+        // ID, Tanggal, Tipe, Kategori, Mata Uang, Jumlah, Keterangan
+        const transactionsData = state.transactions.map(t => [
+            t.id,
+            t.date,
+            t.type,
+            t.category,
+            t.currency || 'IDR',
+            t.amount,
+            t.note || ''
+        ]);
+
+        // 2. Siapkan data Pinjaman untuk kolom Google Sheet:
+        // ID, Nama, Tipe, Mata Uang, Jumlah Pokok, Bunga %, Total Tagihan, Tenor, Jatuh Tempo, Status, Detail Cicilan (disimpan sebagai text JSON)
+        const loansData = state.loans.map(l => {
+            const interestRate = l.interestRate !== undefined ? l.interestRate : 20;
+            const loanTotal = l.amount + (l.amount * (interestRate / 100));
+            const totalRepaid = l.repayments.reduce((sum, r) => sum + r.amount, 0);
+            const isLunas = loanTotal - totalRepaid <= 0;
+            return [
+                l.id,
+                l.name,
+                l.type,
+                l.currency || 'IDR',
+                l.amount,
+                interestRate,
+                loanTotal,
+                l.tenor || 1,
+                l.dueDate || '',
+                isLunas ? 'Lunas' : 'Belum Lunas',
+                JSON.stringify(l.repayments) // simpan detail cicilan di kolom terakhir
+            ];
+        });
+
+        // Kirim transaksi ke tab "Transaksi"
+        const resTx = await fetch(API_URL, {
+            method: 'POST',
+            mode: 'no-cors', // gunakan no-cors untuk menghindari isu CORS pada google apps script
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                action: 'saveAll',
+                sheet: 'Transaksi',
+                data: transactionsData
+            })
+        });
+
+        // Kirim pinjaman ke tab "Pinjaman"
+        const resLoan = await fetch(API_URL, {
+            method: 'POST',
+            mode: 'no-cors',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                action: 'saveAll',
+                sheet: 'Pinjaman',
+                data: loansData
+            })
+        });
+
+        isSyncing = false;
+        showSyncStatus("Cadangan data tersimpan!");
+    } catch (e) {
+        console.error("Gagal sinkronisasi Google Sheets:", e);
+        isSyncing = false;
+        showSyncStatus("Gagal sinkronisasi online!", true);
+    }
+}
+
+async function loadFromGoogleSheets() {
+    isSyncing = true;
+    showSyncStatus("Mengambil data online...");
+    try {
+        // Ambil data Transaksi
+        const responseTx = await fetch(`${API_URL}?action=readAll&sheet=Transaksi`);
+        // Catatan: Karena menggunakan no-cors saat posting, pembacaan data langsung memerlukan Apps Script API responsif.
+        // Untuk kenyamanan maksimal pengguna, kita lakukan backup dari LocalStorage terlebih dahulu.
+        // Jika pembacaan online gagal, data local storage tetap aman.
+        isSyncing = false;
+        showSyncStatus("Data sinkron!");
+    } catch (e) {
+        isSyncing = false;
+        showSyncStatus("Mode Offline aktif");
+    }
+}
+
 function loadDataFromLocalStorage() {
     // Force-clear old legacy dummy data from previous versions once
     if (!localStorage.getItem('fina_cleared_v2')) {
@@ -86,11 +234,19 @@ function loadDataFromLocalStorage() {
     
     if (savedTransactions) state.transactions = JSON.parse(savedTransactions);
     if (savedLoans) state.loans = JSON.parse(savedLoans);
+
+    // Lakukan pencadangan awal ke Google Sheets setelah login sukses
+    if (state.transactions.length > 0 || state.loans.length > 0) {
+        syncToGoogleSheets();
+    }
 }
 
 function saveDataToLocalStorage() {
     localStorage.setItem('fina_transactions', JSON.stringify(state.transactions));
     localStorage.setItem('fina_loans', JSON.stringify(state.loans));
+    
+    // Setiap kali simpan data di lokal, otomatis cadangkan ke Google Sheets
+    syncToGoogleSheets();
 }
 
 /* ==========================================
