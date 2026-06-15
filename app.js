@@ -80,11 +80,10 @@ let isSyncing = false;
 function showSyncStatus(message, isError = false) {
     let syncIndicator = document.getElementById('sync-indicator');
     if (!syncIndicator) {
-        // Buat indikator di pojok kanan atas layar atau di sidebar jika belum ada
         syncIndicator = document.createElement('div');
         syncIndicator.id = 'sync-indicator';
         syncIndicator.style.position = 'fixed';
-        syncIndicator.style.bottom = '80px'; // Di atas bottom nav pada mobile
+        syncIndicator.style.bottom = '80px';
         syncIndicator.style.right = '20px';
         syncIndicator.style.backgroundColor = 'var(--bg-card)';
         syncIndicator.style.border = '1px solid var(--border-color)';
@@ -105,7 +104,6 @@ function showSyncStatus(message, isError = false) {
         <span style="color: var(--text-primary);">${message}</span>
     `;
 
-    // Hilangkan indikator setelah 4 detik jika sukses
     if (!isSyncing && !isError) {
         setTimeout(() => {
             syncIndicator.style.opacity = '0';
@@ -119,7 +117,6 @@ function showSyncStatus(message, isError = false) {
     }
 }
 
-// Tambahkan CSS Keyframe untuk animasi denyut jika belum ada
 if (!document.getElementById('sync-style')) {
     const style = document.createElement('style');
     style.id = 'sync-style';
@@ -138,7 +135,6 @@ async function syncToGoogleSheets() {
     showSyncStatus("Menyimpan ke Google Sheets...");
 
     try {
-        // 1. Siapkan data Transaksi untuk kolom Google Sheet:
         const transactionsData = state.transactions.map(t => [
             t.id,
             t.date,
@@ -149,7 +145,6 @@ async function syncToGoogleSheets() {
             t.note || ''
         ]);
 
-        // 2. Siapkan data Pinjaman untuk kolom Google Sheet:
         const loansData = state.loans.map(l => {
             const interestRate = l.interestRate !== undefined ? l.interestRate : 20;
             const loanTotal = l.amount + (l.amount * (interestRate / 100));
@@ -166,11 +161,10 @@ async function syncToGoogleSheets() {
                 l.tenor || 1,
                 l.dueDate || '',
                 isLunas ? 'Lunas' : 'Belum Lunas',
-                JSON.stringify(l.repayments) // simpan detail cicilan di kolom terakhir
+                JSON.stringify(l.repayments)
             ];
         });
 
-        // Kirim transaksi ke tab "Transaksi"
         await fetch(API_URL, {
             method: 'POST',
             mode: 'no-cors',
@@ -182,7 +176,6 @@ async function syncToGoogleSheets() {
             })
         });
 
-        // Kirim pinjaman ke tab "Pinjaman"
         await fetch(API_URL, {
             method: 'POST',
             mode: 'no-cors',
@@ -207,7 +200,6 @@ async function loadFromGoogleSheets() {
     isSyncing = true;
     showSyncStatus("Mengunduh data online...");
     try {
-        // 1. Ambil data Transaksi
         const responseTx = await fetch(`${API_URL}?sheet=Transaksi`);
         const jsonTx = await responseTx.json();
         
@@ -223,7 +215,6 @@ async function loadFromGoogleSheets() {
             }));
         }
 
-        // 2. Ambil data Pinjaman
         const responseLoan = await fetch(`${API_URL}?sheet=Pinjaman`);
         const jsonLoan = await responseLoan.json();
         
@@ -241,7 +232,6 @@ async function loadFromGoogleSheets() {
             }));
         }
 
-        // Simpan ke lokal agar saat offline tetap punya data
         localStorage.setItem('fina_transactions', JSON.stringify(state.transactions));
         localStorage.setItem('fina_loans', JSON.stringify(state.loans));
 
@@ -256,22 +246,18 @@ async function loadFromGoogleSheets() {
 }
 
 function loadDataFromLocalStorage() {
-    // Jalankan pencadangan lokal dulu agar tampilan tidak kosong saat loading online
     const savedTransactions = localStorage.getItem('fina_transactions');
     const savedLoans = localStorage.getItem('fina_loans');
     
     if (savedTransactions) state.transactions = JSON.parse(savedTransactions);
     if (savedLoans) state.loans = JSON.parse(savedLoans);
 
-    // Ambil versi terupdate secara real-time dari Google Sheets
     loadFromGoogleSheets();
 }
 
 function saveDataToLocalStorage() {
     localStorage.setItem('fina_transactions', JSON.stringify(state.transactions));
     localStorage.setItem('fina_loans', JSON.stringify(state.loans));
-    
-    // Setiap kali simpan data di lokal, otomatis cadangkan ke Google Sheets
     syncToGoogleSheets();
 }
 
@@ -393,7 +379,6 @@ function populateFilterCategories() {
     });
 }
 
-// Helper function to format input values during typing
 function formatInputCurrency(input) {
     let cursorPosition = input.selectionStart;
     let originalLength = input.value.length;
@@ -412,7 +397,6 @@ function formatInputCurrency(input) {
     input.setSelectionRange(cursorPosition + (newLength - originalLength), cursorPosition + (newLength - originalLength));
 }
 
-// Convert "1.000.000" back to float
 function parseFormattedNumber(str) {
     if (!str) return 0;
     let clean = String(str).replace(/\D/g, "");
