@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Catatan Financial - Dashboard Keuangan Premium</title>
+    <!-- Google Fonts: Outfit -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- ChartJS -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Blueprint Sweep Laser Animation (Now Green Matrix Scan) -->
+    <div class="blueprint-scan"></div>
+
+    <!-- LOGIN PORTAL (DOLLAR THEME) -->
+    <div id="login-container" class="login-portal">
+        <div class="login-card">
+            <div class="login-header">
+                <i class="fa-solid fa-money-bill-wave login-logo"></i>
+                <h2>Dollar<span>Vault</span></h2>
+                <p>Otorisasi Pemilik Brankas Federal</p>
+            </div>
+            <form id="login-form-element" onsubmit="handleLogin(event)">
+                <div class="form-group">
+                    <label for="login-user">Username Owner</label>
+                    <input type="text" id="login-user" placeholder="Username..." required>
+                </div>
+                <div class="form-group">
+                    <label for="login-pass">Password</label>
+                    <input type="password" id="login-pass" placeholder="Password..." required>
+                </div>
+                <div id="login-error-msg" class="login-error" style="display: none;">
+                    <i class="fa-solid fa-triangle-exclamation"></i> Kredensial Salah!
+                </div>
+                <button type="submit" class="btn btn-primary btn-block">Masuk Brankas</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- MAIN APP WRAPPER -->
+    <div id="app-wrapper" style="display: none;">
+        <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="brand">
+                <i class="fa-solid fa-dollar-sign brand-icon"></i>
+                <h2>Dollar<span>Vault</span></h2>
+            </div>
+            <nav class="nav-menu">
+                <a href="#" class="nav-item active" data-target="dashboard-section">
+                    <i class="fa-solid fa-wallet"></i> Brankas Utama
+                </a>
+                <a href="#" class="nav-item" data-target="transactions-section">
+                    <i class="fa-solid fa-money-bill-transfer"></i> Arus Kas
+                </a>
+                <a href="#" class="nav-item" data-target="loans-section">
+                    <i class="fa-solid fa-hand-holding-dollar"></i> Pinjaman & Utang
+                </a>
+            </nav>
+            <div class="sidebar-footer">
+                <p>Catatan Financial v1.0</p>
+                <button class="btn btn-secondary btn-sm" onclick="handleLogout()" style="margin-top: 0.75rem; width: 100%;">
+                    <i class="fa-solid fa-right-from-bracket"></i> Kunci Brankas
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <!-- Header -->
+            <header class="main-header">
+                <div class="welcome-text">
+                    <h1>Sistem Pembukuan Kas 💵</h1>
+                    <p>"Mengelola aset berharga dengan presisi perbankan internasional."</p>
+                </div>
+                <div class="header-actions">
+                    <button class="btn btn-primary btn-add-transaction" onclick="openModal('transactionModal')">
+                        <i class="fa-solid fa-plus"></i> Transaksi Baru
+                    </button>
+                    <button class="btn btn-secondary btn-add-loan" onclick="openModal('loanModal')">
+                        <i class="fa-solid fa-handshake"></i> Catat Pinjaman
+                    </button>
+                </div>
+            </header>
+
+            <!-- SECTIONS -->
+
+            <!-- 1. DASHBOARD SECTION -->
+            <section id="dashboard-section" class="content-section active">
+                <!-- Currency Filter Selector Tabs -->
+                <div class="currency-tabs-container" style="margin-bottom: 1.5rem; display: flex; gap: 0.5rem; background: var(--bg-secondary); padding: 0.5rem; border-radius: 8px; border: 1px solid var(--border-color); width: fit-content;">
+                    <button class="btn btn-secondary btn-sm active-currency" onclick="changeDashboardCurrency('IDR')" id="tab-curr-IDR">IDR (Rupiah)</button>
+                    <button class="btn btn-secondary btn-sm" onclick="changeDashboardCurrency('USD')" id="tab-curr-USD">USD (Dollar)</button>
+                    <button class="btn btn-secondary btn-sm" onclick="changeDashboardCurrency('KHR')" id="tab-curr-KHR">KHR (Riel)</button>
+                    <button class="btn btn-secondary btn-sm" onclick="changeDashboardCurrency('THB')" id="tab-curr-THB">THB (Baht)</button>
+                </div>
+
+                <!-- Summary Cards Grid -->
+                <div class="summary-grid">
+                    <!-- Balance Card -->
+                    <div class="summary-card balance-card">
+                        <div class="card-icon"><i class="fa-solid fa-sack-dollar"></i></div>
+                        <div class="card-info">
+                            <h3>Total Saldo Bersih (<span class="active-currency-label">IDR</span>)</h3>
+                            <p class="amount" id="total-balance">0</p>
+                        </div>
+                    </div>
+                    <!-- Income Card -->
+                    <div class="summary-card income-card">
+                        <div class="card-icon"><i class="fa-solid fa-arrow-trend-up"></i></div>
+                        <div class="card-info">
+                            <h3>Total Kas Masuk (<span class="active-currency-label">IDR</span>)</h3>
+                            <p class="amount" id="total-income">0</p>
+                        </div>
+                    </div>
+                    <!-- Expense Card -->
+                    <div class="summary-card expense-card">
+                        <div class="card-icon"><i class="fa-solid fa-arrow-trend-down"></i></div>
+                        <div class="card-info">
+                            <h3>Total Kas Keluar (<span class="active-currency-label">IDR</span>)</h3>
+                            <p class="amount" id="total-expense">0</p>
+                        </div>
+                    </div>
+                    <!-- Loan Card -->
+                    <div class="summary-card loan-card">
+                        <div class="card-icon"><i class="fa-solid fa-hand-holding-dollar"></i></div>
+                        <div class="card-info">
+                            <h3>Sisa Piutang / Utang (<span class="active-currency-label">IDR</span>)</h3>
+                            <p class="amount" id="total-loans">0</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Charts & Quick lists Grid -->
+                <div class="dashboard-grid">
+                    <!-- Main Chart -->
+                    <div class="chart-container card">
+                        <h3>Arus Kas Bulanan</h3>
+                        <div class="chart-wrapper">
+                            <canvas id="cashflowChart"></canvas>
+                        </div>
+                    </div>
+                    <!-- Category & Limit Chart -->
+                    <div class="chart-container card">
+                        <h3>Distribusi Pengeluaran</h3>
+                        <div class="chart-wrapper">
+                            <canvas id="categoryChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recent Activities & Loans Grid -->
+                <div class="dashboard-grid grid-2-col">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>Transaksi Terakhir</h3>
+                            <a href="#" class="view-all" onclick="switchSection('transactions-section')">Lihat Semua</a>
+                        </div>
+                        <ul class="recent-list" id="recent-transactions">
+                            <!-- JS populated -->
+                            <li class="empty-list">Belum ada transaksi terdaftar.</li>
+                        </ul>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>Pinjaman Aktif</h3>
+                            <a href="#" class="view-all" onclick="switchSection('loans-section')">Lihat Semua</a>
+                        </div>
+                        <ul class="recent-list" id="recent-loans">
+                            <!-- JS populated -->
+                            <li class="empty-list">Belum ada pinjaman aktif.</li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 2. TRANSACTIONS SECTION -->
+            <section id="transactions-section" class="content-section">
+                <div class="card">
+                    <div class="table-actions">
+                        <div class="search-box">
+                            <i class="fa-solid fa-magnifying-glass"></i>
+                            <input type="text" id="search-transaction" placeholder="Cari transaksi..." oninput="filterTransactions()">
+                        </div>
+                        <div class="filter-group">
+                            <select id="filter-type" onchange="filterTransactions()">
+                                <option value="all">Semua Tipe</option>
+                                <option value="masuk">Uang Masuk</option>
+                                <option value="keluar">Uang Keluar</option>
+                            </select>
+                            <select id="filter-category" onchange="filterTransactions()">
+                                <option value="all">Semua Kategori</option>
+                                <option value="Gaji">Gaji</option>
+                                <option value="Makanan">Makanan</option>
+                                <option value="Transportasi">Transportasi</option>
+                                <option value="Hiburan">Hiburan</option>
+                                <option value="Belanja">Belanja</option>
+                                <option value="Kebutuhan Rumah">Kebutuhan Rumah</option>
+                                <option value="Investasi">Investasi</option>
+                                <option value="Lainnya">Lainnya</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Tanggal</th>
+                                    <th>Mata Uang</th>
+                                    <th>Kategori</th>
+                                    <th>Keterangan</th>
+                                    <th>Tipe</th>
+                                    <th>Jumlah</th>
+                                    <th>Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody id="transaction-table-body">
+                                <!-- JS populated -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 3. LOANS SECTION -->
+            <section id="loans-section" class="content-section">
+                <div class="card">
+                    <div class="table-actions">
+                        <div class="search-box">
+                            <i class="fa-solid fa-magnifying-glass"></i>
+                            <input type="text" id="search-loan" placeholder="Cari pinjaman..." oninput="filterLoans()">
+                        </div>
+                        <div class="filter-group">
+                            <select id="filter-loan-type" onchange="filterLoans()">
+                                <option value="all">Semua Tipe</option>
+                                <option value="piutang">Piutang (Kita Pinjamkan)</option>
+                                <option value="hutang">Hutang (Kita Meminjam)</option>
+                            </select>
+                            <select id="filter-loan-status" onchange="filterLoans()">
+                                <option value="all">Semua Status</option>
+                                <option value="belum-lunas">Belum Lunas</option>
+                                <option value="lunas">Lunas</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Tanggal</th>
+                                    <th>Pihak / Nama</th>
+                                    <th>Mata Uang</th>
+                                    <th>Tipe</th>
+                                    <th>Pinjaman Pokok</th>
+                                    <th>Bunga</th>
+                                    <th>Total Tagihan</th>
+                                    <th>Terbayar</th>
+                                    <th>Sisa Tagihan</th>
+                                    <th>Jatuh Tempo</th>
+                                    <th>Status</th>
+                                    <th>Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody id="loan-table-body">
+                                <!-- JS populated -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- MODAL: TRANSAKSI BARU -->
+    <div id="transactionModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Tambah Transaksi Baru</h2>
+                <span class="close-btn" onclick="closeModal('transactionModal')">&times;</span>
+            </div>
+            <form id="transaction-form" onsubmit="saveTransaction(event)">
+                <input type="hidden" id="edit-transaction-id">
+                <div class="form-group">
+                    <label for="tx-type">Tipe Transaksi</label>
+                    <select id="tx-type" required onchange="updateCategoryOptions()">
+                        <option value="keluar">Uang Keluar (Pengeluaran)</option>
+                        <option value="masuk">Uang Masuk (Pendapatan)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="tx-currency">Mata Uang</label>
+                    <select id="tx-currency" required>
+                        <option value="IDR">IDR (Rupiah)</option>
+                        <option value="USD">USD (Dollar)</option>
+                        <option value="KHR">KHR (Riel Kamboja)</option>
+                        <option value="THB">THB (Baht Thailand)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="tx-category">Kategori</label>
+                    <select id="tx-category" required>
+                        <!-- Populated by JS -->
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="tx-amount">Jumlah Nominal</label>
+                    <input type="text" id="tx-amount" placeholder="Masukkan jumlah..." required oninput="formatInputCurrency(this)">
+                </div>
+                <div class="form-group">
+                    <label for="tx-date">Tanggal</label>
+                    <input type="date" id="tx-date" required>
+                </div>
+                <div class="form-group">
+                    <label for="tx-note">Keterangan / Catatan</label>
+                    <input type="text" id="tx-note" placeholder="Beli barang, Gaji, dll." required>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('transactionModal')">Batal</button>
+                    <button type="submit" class="btn btn-primary">Simpan Transaksi</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: PINJAMAN BARU -->
+    <div id="loanModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Catat Pinjaman Baru</h2>
+                <span class="close-btn" onclick="closeModal('loanModal')">&times;</span>
+            </div>
+            <form id="loan-form" onsubmit="saveLoan(event)">
+                <div class="form-group">
+                    <label for="loan-type">Tipe Pinjaman</label>
+                    <select id="loan-type" required>
+                        <option value="piutang">Memberi Pinjaman (Orang Berhutang ke Kita)</option>
+                        <option value="hutang">Menerima Pinjaman (Kita Berhutang ke Orang)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="loan-name">Nama Pihak / Orang</label>
+                    <input type="text" id="loan-name" placeholder="Nama teman, bank, dll." required>
+                </div>
+                <div class="form-group">
+                    <label for="loan-currency">Mata Uang</label>
+                    <select id="loan-currency" required onchange="calculateLoanProjection()">
+                        <option value="IDR">IDR (Rupiah)</option>
+                        <option value="USD">USD (Dollar)</option>
+                        <option value="KHR">KHR (Riel Kamboja)</option>
+                        <option value="THB">THB (Baht Thailand)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="loan-amount">Jumlah Pinjaman Pokok</label>
+                    <input type="text" id="loan-amount" placeholder="Masukkan jumlah..." required oninput="formatInputCurrency(this); calculateLoanProjection();">
+                </div>
+                <div class="form-group">
+                    <label for="loan-interest">Suku Bunga</label>
+                    <select id="loan-interest" onchange="calculateLoanProjection()">
+                        <option value="20">Bunga 20% (Flat)</option>
+                        <option value="0">Tanpa Bunga (0%)</option>
+                    </select>
+                </div>
+                <div class="form-group" style="background: rgba(133,187,101,0.08); padding: 0.85rem; border-radius: 6px; border: 1px dashed var(--border-color);">
+                    <p style="font-size: 0.85rem; color: var(--dollar-green); margin-bottom: 0.25rem;">Estimasi Pengembalian:</p>
+                    <p style="font-size: 1.15rem; font-weight: 700; color: #fff;" id="loan-projection-text">0</p>
+                </div>
+                <div class="form-group">
+                    <label for="loan-date">Tanggal Pinjam</label>
+                    <input type="date" id="loan-date" required>
+                </div>
+                <div class="form-group">
+                    <label for="loan-due-date">Tanggal Jatuh Tempo (Opsional)</label>
+                    <input type="date" id="loan-due-date">
+                </div>
+                <div class="form-group">
+                    <label for="loan-note">Catatan Tambahan</label>
+                    <input type="text" id="loan-note" placeholder="Misal: untuk modal usaha, pinjaman berobat">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('loanModal')">Batal</button>
+                    <button type="submit" class="btn btn-primary">Simpan Pinjaman</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: CICIL / BAYAR PINJAMAN -->
+    <div id="repayModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Pembayaran / Cicilan Pinjaman</h2>
+                <span class="close-btn" onclick="closeModal('repayModal')">&times;</span>
+            </div>
+            <form id="repay-form" onsubmit="saveRepayment(event)">
+                <input type="hidden" id="repay-loan-id">
+                <div class="repay-info-card">
+                    <p><strong>Pihak:</strong> <span id="repay-info-name">-</span></p>
+                    <p><strong>Sisa Pinjaman:</strong> <span id="repay-info-remaining">Rp 0</span></p>
+                </div>
+                <div class="form-group">
+                    <label for="repay-amount">Jumlah Pembayaran (Rupiah)</label>
+                    <input type="text" id="repay-amount" placeholder="Masukkan jumlah..." required oninput="formatInputCurrency(this)">
+                </div>
+                <div class="form-group">
+                    <label for="repay-date">Tanggal Bayar</label>
+                    <input type="date" id="repay-date" required>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('repayModal')">Batal</button>
+                    <button type="submit" class="btn btn-primary">Simpan Pembayaran</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- BOTTOM NAVIGATION FOR MOBILE DEVICES -->
+    <div class="bottom-nav">
+        <a href="#" class="bottom-nav-item active" data-target="dashboard-section">
+            <i class="fa-solid fa-wallet"></i>
+            <span>Brankas</span>
+        </a>
+        <a href="#" class="bottom-nav-item" data-target="transactions-section">
+            <i class="fa-solid fa-money-bill-transfer"></i>
+            <span>Arus Kas</span>
+        </a>
+        <a href="#" class="bottom-nav-item" data-target="loans-section">
+            <i class="fa-solid fa-hand-holding-dollar"></i>
+            <span>Pinjaman</span>
+        </a>
+        <a href="#" class="bottom-nav-item" onclick="handleLogout()">
+            <i class="fa-solid fa-right-from-bracket"></i>
+            <span>Keluar</span>
+        </a>
+    </div>
+    </div> <!-- Close app-wrapper -->
+
+    <script src="app.js"></script>
+</body>
+</html>
