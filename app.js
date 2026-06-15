@@ -139,7 +139,6 @@ async function syncToGoogleSheets() {
 
     try {
         // 1. Siapkan data Transaksi untuk kolom Google Sheet:
-        // ID, Tanggal, Tipe, Kategori, Mata Uang, Jumlah, Keterangan
         const transactionsData = state.transactions.map(t => [
             t.id,
             t.date,
@@ -151,7 +150,6 @@ async function syncToGoogleSheets() {
         ]);
 
         // 2. Siapkan data Pinjaman untuk kolom Google Sheet:
-        // ID, Nama, Tipe, Mata Uang, Jumlah Pokok, Bunga %, Total Tagihan, Tenor, Jatuh Tempo, Status, Detail Cicilan (disimpan sebagai text JSON)
         const loansData = state.loans.map(l => {
             const interestRate = l.interestRate !== undefined ? l.interestRate : 20;
             const loanTotal = l.amount + (l.amount * (interestRate / 100));
@@ -173,9 +171,9 @@ async function syncToGoogleSheets() {
         });
 
         // Kirim transaksi ke tab "Transaksi"
-        const resTx = await fetch(API_URL, {
+        await fetch(API_URL, {
             method: 'POST',
-            mode: 'no-cors', // gunakan no-cors untuk menghindari isu CORS pada google apps script
+            mode: 'no-cors',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 action: 'saveAll',
@@ -185,7 +183,7 @@ async function syncToGoogleSheets() {
         });
 
         // Kirim pinjaman ke tab "Pinjaman"
-        const resLoan = await fetch(API_URL, {
+        await fetch(API_URL, {
             method: 'POST',
             mode: 'no-cors',
             headers: { 'Content-Type': 'application/json' },
@@ -207,38 +205,66 @@ async function syncToGoogleSheets() {
 
 async function loadFromGoogleSheets() {
     isSyncing = true;
-    showSyncStatus("Mengambil data online...");
+    showSyncStatus("Mengunduh data online...");
     try {
-        // Ambil data Transaksi
-        const responseTx = await fetch(`${API_URL}?action=readAll&sheet=Transaksi`);
-        // Catatan: Karena menggunakan no-cors saat posting, pembacaan data langsung memerlukan Apps Script API responsif.
-        // Untuk kenyamanan maksimal pengguna, kita lakukan backup dari LocalStorage terlebih dahulu.
-        // Jika pembacaan online gagal, data local storage tetap aman.
+        // 1. Ambil data Transaksi
+        const responseTx = await fetch(`${API_URL}?sheet=Transaksi`);
+        const jsonTx = await responseTx.json();
+        
+        if (jsonTx.status === 'success' && jsonTx.data) {
+            state.transactions = jsonTx.data.map(row => ({
+                id: row[0],
+                date: row[1],
+                type: row[2],
+                category: row[3],
+                currency: row[4],
+                amount: parseFloat(row[5]) || 0,
+                note: row[6]
+            }));
+        }
+
+        // 2. Ambil data Pinjaman
+        const responseLoan = await fetch(`${API_URL}?sheet=Pinjaman`);
+        const jsonLoan = await responseLoan.json();
+        
+        if (jsonLoan.status === 'success' && jsonLoan.data) {
+            state.loans = jsonLoan.data.map(row => ({
+                id: row[0],
+                name: row[1],
+                type: row[2],
+                currency: row[3],
+                amount: parseFloat(row[4]) || 0,
+                interestRate: parseFloat(row[5]) || 20,
+                tenor: parseInt(row[7]) || 1,
+                dueDate: row[8],
+                repayments: row[10] ? JSON.parse(row[10]) : []
+            }));
+        }
+
+        // Simpan ke lokal agar saat offline tetap punya data
+        localStorage.setItem('fina_transactions', JSON.stringify(state.transactions));
+        localStorage.setItem('fina_loans', JSON.stringify(state.loans));
+
         isSyncing = false;
-        showSyncStatus("Data sinkron!");
+        showSyncStatus("Data sinkron dengan Google Sheets!");
+        updateDashboardUI();
     } catch (e) {
+        console.error("Gagal mengunduh data online:", e);
         isSyncing = false;
-        showSyncStatus("Mode Offline aktif");
+        showSyncStatus("Gagal sinkron online, memuat data lokal", true);
     }
 }
 
 function loadDataFromLocalStorage() {
-    // Force-clear old legacy dummy data from previous versions once
-    if (!localStorage.getItem('fina_cleared_v2')) {
-        localStorage.clear();
-        localStorage.setItem('fina_cleared_v2', 'true');
-    }
-
+    // Jalankan pencadangan lokal dulu agar tampilan tidak kosong saat loading online
     const savedTransactions = localStorage.getItem('fina_transactions');
     const savedLoans = localStorage.getItem('fina_loans');
     
     if (savedTransactions) state.transactions = JSON.parse(savedTransactions);
     if (savedLoans) state.loans = JSON.parse(savedLoans);
 
-    // Lakukan pencadangan awal ke Google Sheets setelah login sukses
-    if (state.transactions.length > 0 || state.loans.length > 0) {
-        syncToGoogleSheets();
-    }
+    // Ambil versi terupdate secara real-time dari Google Sheets
+    loadFromGoogleSheets();
 }
 
 function saveDataToLocalStorage() {
