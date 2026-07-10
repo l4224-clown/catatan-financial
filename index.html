@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Catatan Financial - Dashboard Keuangan Premium</title>
+    <title>RKD Vault - Catatan Financial Premium</title>
     <!-- Google Fonts: Outfit -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -20,11 +20,15 @@
 
     <!-- LOGIN PORTAL (DOLLAR THEME) -->
     <div id="login-container" class="login-portal">
+        <video autoplay loop muted playsinline poster="naruto_login.jpg" class="login-video-bg">
+            <source src="naruto_login.mp4" type="video/mp4">
+        </video>
+        <canvas id="chakra-particles"></canvas>
         <div class="login-card">
             <div class="login-header">
-                <i class="fa-solid fa-money-bill-wave login-logo"></i>
-                <h2>Dollar<span>Vault</span></h2>
-                <p>Otorisasi Pemilik Brankas Federal</p>
+                <img src="logo.png" alt="RKD Logo" class="login-logo-img">
+                <h2>RKD<span>Vault</span></h2>
+                <p>Otorisasi Pemilik Brankas RKD</p>
             </div>
             <form id="login-form-element" onsubmit="handleLogin(event)">
                 <div class="form-group">
@@ -49,8 +53,8 @@
         <!-- Sidebar Navigation -->
         <aside class="sidebar">
             <div class="brand">
-                <i class="fa-solid fa-dollar-sign brand-icon"></i>
-                <h2>Dollar<span>Vault</span></h2>
+                <img src="logo.png" alt="RKD Logo" class="brand-logo-img">
+                <h2>RKD<span>Vault</span></h2>
             </div>
             <nav class="nav-menu">
                 <a href="#" class="nav-item active" data-target="dashboard-section">
@@ -61,6 +65,12 @@
                 </a>
                 <a href="#" class="nav-item" data-target="loans-section">
                     <i class="fa-solid fa-hand-holding-dollar"></i> Pinjaman & Utang
+                </a>
+                <a href="#" class="nav-item" data-target="travel-section">
+                    <i class="fa-solid fa-suitcase-rolling"></i> Catatan Perjalanan
+                </a>
+                <a href="#" class="nav-item" data-target="notes-section">
+                    <i class="fa-solid fa-note-sticky"></i> Buku Catatan
                 </a>
             </nav>
             <div class="sidebar-footer">
@@ -76,8 +86,8 @@
             <!-- Header -->
             <header class="main-header">
                 <div class="welcome-text">
-                    <h1>Sistem Pembukuan Kas 💵</h1>
-                    <p>"Mengelola aset berharga dengan presisi perbankan internasional."</p>
+                    <h1>Sistem Pembukuan Kas RKD 💵</h1>
+                    <p>"Mengelola aset dan arus keuangan RKD dengan presisi premium."</p>
                 </div>
                 <div class="header-actions">
                     <button class="btn btn-primary btn-add-transaction" onclick="openModal('transactionModal')">
@@ -85,6 +95,9 @@
                     </button>
                     <button class="btn btn-secondary btn-add-loan" onclick="openModal('loanModal')">
                         <i class="fa-solid fa-handshake"></i> Catat Pinjaman
+                    </button>
+                    <button class="btn btn-danger" onclick="handleLogout()" style="background-color: var(--color-danger-bg); color: var(--color-danger); border: 1px solid rgba(255, 51, 51, 0.25);">
+                        <i class="fa-solid fa-right-from-bracket"></i> Keluar
                     </button>
                 </div>
             </header>
@@ -277,6 +290,48 @@
                     </div>
                 </div>
             </section>
+
+            <!-- 4. TRAVEL SECTION -->
+            <section id="travel-section" class="content-section">
+                <div class="card">
+                    <div class="table-actions">
+                        <div class="search-box">
+                            <i class="fa-solid fa-magnifying-glass"></i>
+                            <input type="text" id="search-travel" placeholder="Cari perjalanan..." oninput="filterTravels()">
+                        </div>
+                        <div class="filter-group">
+                            <button class="btn btn-primary btn-sm" onclick="openModal('travelModal')">
+                                <i class="fa-solid fa-plus"></i> Perjalanan Baru
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="travel-grid" id="travel-grid-container">
+                        <!-- JS populated -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- 5. NOTES SECTION -->
+            <section id="notes-section" class="content-section">
+                <div class="card">
+                    <div class="table-actions">
+                        <div class="search-box">
+                            <i class="fa-solid fa-magnifying-glass"></i>
+                            <input type="text" id="search-notes" placeholder="Cari catatan..." oninput="filterNotes()">
+                        </div>
+                        <div class="filter-group">
+                            <button class="btn btn-primary btn-sm" onclick="openModal('noteModal')">
+                                <i class="fa-solid fa-plus"></i> Catatan Baru
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="notes-grid" id="notes-grid-container">
+                        <!-- JS populated -->
+                    </div>
+                </div>
+            </section>
         </main>
     </div>
 
@@ -423,6 +478,194 @@
         </div>
     </div>
 
+    <!-- MODAL: PERJALANAN BARU -->
+    <div id="travelModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Tambah Perjalanan Baru</h2>
+                <span class="close-btn" onclick="closeModal('travelModal')">&times;</span>
+            </div>
+            <form id="travel-form" onsubmit="saveTravel(event)">
+                <input type="hidden" id="edit-travel-id">
+                <div class="form-group">
+                    <label for="travel-name">Nama Perjalanan / Agenda</label>
+                    <input type="text" id="travel-name" placeholder="Misal: Liburan Akhir Tahun ke Bali" required>
+                </div>
+                <div class="form-group">
+                    <label for="travel-destination">Destinasi</label>
+                    <input type="text" id="travel-destination" placeholder="Misal: Bali, Indonesia" required>
+                </div>
+                <div class="form-group">
+                    <label for="travel-budget">Total Anggaran (Rupiah)</label>
+                    <input type="text" id="travel-budget" placeholder="Masukkan nominal anggaran..." required oninput="formatInputCurrency(this)">
+                </div>
+                <div class="form-group">
+                    <label for="travel-start-date">Tanggal Mulai</label>
+                    <input type="date" id="travel-start-date" required>
+                </div>
+                <div class="form-group">
+                    <label for="travel-end-date">Tanggal Selesai</label>
+                    <input type="date" id="travel-end-date" required>
+                </div>
+                <div class="form-group">
+                    <label for="travel-description">Keterangan / Rencana Singkat</label>
+                    <input type="text" id="travel-description" placeholder="Catatan tambahan, destinasi wajib, dll.">
+                </div>
+                <div class="form-group">
+                    <label for="travel-photo">Foto Cover Perjalanan</label>
+                    <input type="file" id="travel-photo" accept="image/*" onchange="previewTravelPhoto(this)">
+                    <div class="travel-photo-preview-container" style="margin-top: 0.75rem; display: none;">
+                        <img id="travel-photo-preview" src="" alt="Preview" style="max-width: 100%; border-radius: 8px; border: 1px solid var(--border-color); max-height: 150px; object-fit: cover;">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('travelModal')">Batal</button>
+                    <button type="submit" class="btn btn-primary">Simpan Perjalanan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: DETAIL & PENGELUARAN PERJALANAN -->
+    <div id="travelDetailModal" class="modal">
+        <div class="modal-content" style="max-width: 750px;">
+            <div class="modal-header">
+                <h2 id="td-title">Detail Perjalanan</h2>
+                <span class="close-btn" onclick="closeModal('travelDetailModal')">&times;</span>
+            </div>
+            
+            <div class="travel-detail-body">
+                <div class="td-cover-wrapper" style="position: relative; height: 180px; width: 100%; overflow: hidden; border-radius: 12px; margin-bottom: 1.5rem; border: 1px solid var(--border-color);">
+                    <img id="td-cover" src="naruto.jpg" alt="Cover" style="width: 100%; height: 100%; object-fit: cover;">
+                    <div class="td-overlay" style="position: absolute; bottom: 0; left: 0; right: 0; padding: 1.25rem 1rem; background: linear-gradient(to top, rgba(10,9,8,0.9), transparent); color: #fff;">
+                        <h3 id="td-dest-dates" style="font-size: 1.15rem; font-weight: 700;">Destinasi</h3>
+                        <p id="td-desc" style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.25rem;">Deskripsi</p>
+                    </div>
+                </div>
+
+                <div class="td-budget-stats" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1.5rem;">
+                    <div class="summary-card" style="padding: 1rem; flex-direction: column; align-items: flex-start; gap: 0.5rem;">
+                        <span style="font-size: 0.75rem; font-weight: 600; text-transform: uppercase; color: var(--text-secondary);">Anggaran</span>
+                        <span id="td-budget-val" style="font-size: 1.2rem; font-weight: 700;">Rp 0</span>
+                    </div>
+                    <div class="summary-card" style="padding: 1rem; flex-direction: column; align-items: flex-start; gap: 0.5rem;">
+                        <span style="font-size: 0.75rem; font-weight: 600; text-transform: uppercase; color: var(--text-secondary);">Terpakai</span>
+                        <span id="td-spent-val" style="font-size: 1.2rem; font-weight: 700; color: var(--color-danger);">Rp 0</span>
+                    </div>
+                    <div class="summary-card" style="padding: 1rem; flex-direction: column; align-items: flex-start; gap: 0.5rem;">
+                        <span style="font-size: 0.75rem; font-weight: 600; text-transform: uppercase; color: var(--text-secondary);">Sisa</span>
+                        <span id="td-remaining-val" style="font-size: 1.2rem; font-weight: 700; color: var(--color-success);">Rp 0</span>
+                    </div>
+                </div>
+
+                <div class="progress-container" style="margin-bottom: 2rem;">
+                    <div style="display: flex; justify-content: space-between; font-size: 0.8rem; margin-bottom: 0.5rem; font-weight: 600;">
+                        <span>Persentase Pemakaian</span>
+                        <span id="td-progress-percent">0%</span>
+                    </div>
+                    <div class="td-progress-bar-bg" style="width: 100%; height: 10px; background-color: var(--bg-tertiary); border-radius: 5px; overflow: hidden; border: 1px solid var(--border-color);">
+                        <div id="td-progress-bar" style="width: 0%; height: 100%; background-color: var(--color-success); transition: width 0.3s ease;"></div>
+                    </div>
+                </div>
+
+                <h3 style="font-size: 1rem; font-weight: 700; margin-bottom: 1rem; border-bottom: 1px solid rgba(255,69,0,0.1); padding-bottom: 0.5rem; color: #ffffff;">Tambah Pengeluaran Perjalanan</h3>
+                <form id="travel-expense-form" onsubmit="addTravelExpense(event)" style="display: flex; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 2rem; align-items: flex-end;">
+                    <input type="hidden" id="te-travel-id">
+                    <div class="form-group" style="margin-bottom: 0; flex: 2; min-width: 200px;">
+                        <label for="te-note" style="font-size: 0.75rem;">Keterangan Pengeluaran</label>
+                        <input type="text" id="te-note" placeholder="Misal: Tiket Pesawat, Makan Siang" required>
+                    </div>
+                    <div class="form-group" style="margin-bottom: 0; flex: 1; min-width: 130px;">
+                        <label for="te-category" style="font-size: 0.75rem;">Kategori</label>
+                        <select id="te-category" required>
+                            <option value="Transportasi">Transportasi</option>
+                            <option value="Makanan">Makanan</option>
+                            <option value="Penginapan">Penginapan</option>
+                            <option value="Belanja">Belanja</option>
+                            <option value="Hiburan">Hiburan</option>
+                            <option value="Lainnya">Lainnya</option>
+                        </select>
+                    </div>
+                    <div class="form-group" style="margin-bottom: 0; flex: 1; min-width: 120px;">
+                        <label for="te-amount" style="font-size: 0.75rem;">Jumlah</label>
+                        <input type="text" id="te-amount" placeholder="Nominal..." required oninput="formatInputCurrency(this)">
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="height: 44px; padding: 0 1.25rem;"><i class="fa-solid fa-plus"></i> Tambah</button>
+                </form>
+
+                <h3 style="font-size: 1rem; font-weight: 700; margin-bottom: 1rem; border-bottom: 1px solid rgba(255,69,0,0.1); padding-bottom: 0.5rem; color: #ffffff;">Daftar Pengeluaran Perjalanan</h3>
+                <div class="table-responsive">
+                    <table class="data-table" style="font-size: 0.85rem;">
+                        <thead>
+                            <tr>
+                                <th>Keterangan</th>
+                                <th>Kategori</th>
+                                <th>Jumlah</th>
+                                <th>Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="te-table-body">
+                            <!-- JS populated -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <div class="modal-footer" style="margin-top: 1.5rem;">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('travelDetailModal')">Tutup</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: CATATAN BARU / EDIT -->
+    <div id="noteModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Kelola Buku Catatan</h2>
+                <span class="close-btn" onclick="closeModal('noteModal')">&times;</span>
+            </div>
+            <form id="note-form" onsubmit="saveNote(event)">
+                <input type="hidden" id="edit-note-id">
+                <div class="form-group">
+                    <label for="note-title">Judul Catatan</label>
+                    <input type="text" id="note-title" placeholder="Misal: Rencana Kerja, Ide Bisnis" required>
+                </div>
+                <div class="form-group">
+                    <label for="note-tag">Kategori / Tag</label>
+                    <select id="note-tag" required>
+                        <option value="Penting">Penting</option>
+                        <option value="Ide">Ide / Inspirasi</option>
+                        <option value="Pribadi">Pribadi</option>
+                        <option value="Pekerjaan">Pekerjaan</option>
+                        <option value="Lainnya">Lainnya</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="note-content">Isi Catatan</label>
+                    <textarea id="note-content" rows="8" placeholder="Tuliskan catatan Anda di sini..." required style="width: 100%; padding: 0.8rem 1rem; background-color: var(--bg-tertiary); border: 1px solid var(--border-color); border-radius: 10px; color: #ffffff; font-family: var(--font-main); font-size: 0.9rem; outline: none; transition: var(--transition-smooth); resize: vertical;"></textarea>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('noteModal')">Batal</button>
+                    <button type="submit" class="btn btn-primary">Simpan Catatan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- CUSTOM CONFIRM MODAL -->
+    <div id="confirmModal" class="modal" style="z-index: 20000;">
+        <div class="modal-content">
+            <div class="confirm-icon-wrapper">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+            </div>
+            <h2 id="confirm-message">Apakah Anda yakin?</h2>
+            <div class="confirm-btn-group">
+                <button id="confirm-cancel-btn" type="button" class="confirm-btn confirm-btn-cancel">Batal</button>
+                <button id="confirm-ok-btn" type="button" class="confirm-btn confirm-btn-ok">Yakin</button>
+            </div>
+        </div>
+    </div>
+
     <!-- BOTTOM NAVIGATION FOR MOBILE DEVICES -->
     <div class="bottom-nav">
         <a href="#" class="bottom-nav-item active" data-target="dashboard-section">
@@ -437,9 +680,13 @@
             <i class="fa-solid fa-hand-holding-dollar"></i>
             <span>Pinjaman</span>
         </a>
-        <a href="#" class="bottom-nav-item" onclick="handleLogout()">
-            <i class="fa-solid fa-right-from-bracket"></i>
-            <span>Keluar</span>
+        <a href="#" class="bottom-nav-item" data-target="travel-section">
+            <i class="fa-solid fa-suitcase-rolling"></i>
+            <span>Travel</span>
+        </a>
+        <a href="#" class="bottom-nav-item" data-target="notes-section">
+            <i class="fa-solid fa-note-sticky"></i>
+            <span>Catatan</span>
         </a>
     </div>
     </div> <!-- Close app-wrapper -->

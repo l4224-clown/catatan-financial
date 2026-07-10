@@ -3,7 +3,9 @@
    ========================================== */
 let state = {
     transactions: [],
-    loans: []
+    loans: [],
+    travels: [],
+    notes: []
 };
 
 const categories = {
@@ -15,18 +17,39 @@ let activeCurrency = 'IDR';
 let cashflowChart = null;
 let categoryChart = null;
 
-const OWNER_USERNAME = "pakdol";
-const OWNER_PASSWORD = "asd123";
+const OWNER_USERNAME = "rkd2507";
+const OWNER_PASSWORD = "25071998";
 
 /* ==========================================
    APP INIT & EVENT LISTENERS
    ========================================== */
 document.addEventListener('DOMContentLoaded', () => {
+    lockConsole();
     checkAuthStatus();
     setupNavigation();
     setupDefaultDates();
     updateCategoryOptions();
     populateFilterCategories();
+    initChakraParticles();
+
+    // Bind custom confirm modal buttons
+    const okBtn = document.getElementById('confirm-ok-btn');
+    const cancelBtn = document.getElementById('confirm-cancel-btn');
+    if (okBtn) {
+        okBtn.addEventListener('click', () => {
+            closeModal('confirmModal');
+            if (confirmCallback) {
+                confirmCallback();
+                confirmCallback = null;
+            }
+        });
+    }
+    if (cancelBtn) {
+        cancelBtn.addEventListener('click', () => {
+            closeModal('confirmModal');
+            confirmCallback = null;
+        });
+    }
 });
 
 function checkAuthStatus() {
@@ -68,10 +91,10 @@ function handleLogin(e) {
 }
 
 function handleLogout() {
-    if (confirm('Keluar dari Kubah Utama? Sesi enkripsi Anda akan ditutup.')) {
+    showConfirm('Keluar dari Kubah RKD Vault? Sesi Anda akan ditutup.', () => {
         sessionStorage.removeItem('heist_authorized');
         checkAuthStatus();
-    }
+    });
 }
 
 const API_URL = "https://script.google.com/macros/s/AKfycby-S0rt7fsHIkmeweQtX07b0vbZwXT0AqptVeTld-pfzsmoeYaiES7db_p_v2JKNxM-/exec";
@@ -165,6 +188,26 @@ async function syncToGoogleSheets() {
             ];
         });
 
+        const travelsData = state.travels.map(t => [
+            t.id,
+            t.name,
+            t.destination,
+            t.budget,
+            t.startDate,
+            t.endDate,
+            t.description || '',
+            t.photo || '',
+            JSON.stringify(t.expenses)
+        ]);
+
+        const notesData = state.notes.map(n => [
+            n.id,
+            n.title,
+            n.content || '',
+            n.tag || 'Lainnya',
+            n.date
+        ]);
+
         await fetch(API_URL, {
             method: 'POST',
             mode: 'no-cors',
@@ -184,6 +227,28 @@ async function syncToGoogleSheets() {
                 action: 'saveAll',
                 sheet: 'Pinjaman',
                 data: loansData
+            })
+        });
+
+        await fetch(API_URL, {
+            method: 'POST',
+            mode: 'no-cors',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                action: 'saveAll',
+                sheet: 'Perjalanan',
+                data: travelsData
+            })
+        });
+
+        await fetch(API_URL, {
+            method: 'POST',
+            mode: 'no-cors',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                action: 'saveAll',
+                sheet: 'Catatan',
+                data: notesData
             })
         });
 
@@ -232,12 +297,50 @@ async function loadFromGoogleSheets() {
             }));
         }
 
+        const responseTravel = await fetch(`${API_URL}?sheet=Perjalanan`);
+        const jsonTravel = await responseTravel.json();
+        
+        if (jsonTravel.status === 'success' && jsonTravel.data) {
+            state.travels = jsonTravel.data.map(row => ({
+                id: row[0],
+                name: row[1],
+                destination: row[2],
+                budget: parseFloat(row[3]) || 0,
+                startDate: row[4],
+                endDate: row[5],
+                description: row[6] || '',
+                photo: row[7] || null,
+                expenses: row[8] ? JSON.parse(row[8]) : []
+            }));
+        }
+
+        const responseNotes = await fetch(`${API_URL}?sheet=Catatan`);
+        const jsonNotes = await responseNotes.json();
+        
+        if (jsonNotes.status === 'success' && jsonNotes.data) {
+            state.notes = jsonNotes.data.map(row => ({
+                id: row[0],
+                title: row[1],
+                content: row[2] || '',
+                tag: row[3] || 'Lainnya',
+                date: row[4]
+            }));
+        }
+
         localStorage.setItem('fina_transactions', JSON.stringify(state.transactions));
         localStorage.setItem('fina_loans', JSON.stringify(state.loans));
+        localStorage.setItem('fina_travels', JSON.stringify(state.travels));
+        localStorage.setItem('fina_notes', JSON.stringify(state.notes));
 
         isSyncing = false;
         showSyncStatus("Data sinkron dengan Google Sheets!");
         updateDashboardUI();
+        if (document.getElementById('travel-section')?.classList.contains('active')) {
+            renderTravels();
+        }
+        if (document.getElementById('notes-section')?.classList.contains('active')) {
+            renderNotes();
+        }
     } catch (e) {
         console.error("Gagal mengunduh data online:", e);
         isSyncing = false;
@@ -248,9 +351,13 @@ async function loadFromGoogleSheets() {
 function loadDataFromLocalStorage() {
     const savedTransactions = localStorage.getItem('fina_transactions');
     const savedLoans = localStorage.getItem('fina_loans');
+    const savedTravels = localStorage.getItem('fina_travels');
+    const savedNotes = localStorage.getItem('fina_notes');
     
     if (savedTransactions) state.transactions = JSON.parse(savedTransactions);
     if (savedLoans) state.loans = JSON.parse(savedLoans);
+    if (savedTravels) state.travels = JSON.parse(savedTravels);
+    if (savedNotes) state.notes = JSON.parse(savedNotes);
 
     loadFromGoogleSheets();
 }
@@ -258,6 +365,8 @@ function loadDataFromLocalStorage() {
 function saveDataToLocalStorage() {
     localStorage.setItem('fina_transactions', JSON.stringify(state.transactions));
     localStorage.setItem('fina_loans', JSON.stringify(state.loans));
+    localStorage.setItem('fina_travels', JSON.stringify(state.travels));
+    localStorage.setItem('fina_notes', JSON.stringify(state.notes));
     syncToGoogleSheets();
 }
 
@@ -313,6 +422,10 @@ function switchSection(sectionId) {
         renderTransactionTable();
     } else if (sectionId === 'loans-section') {
         renderLoanTable();
+    } else if (sectionId === 'travel-section') {
+        renderTravels();
+    } else if (sectionId === 'notes-section') {
+        renderNotes();
     }
 }
 
@@ -334,7 +447,26 @@ function closeModal(modalId) {
         setupDefaultDates();
     } else if (modalId === 'repayModal') {
         document.getElementById('repay-form').reset();
+    } else if (modalId === 'travelModal') {
+        document.getElementById('travel-form').reset();
+        document.getElementById('edit-travel-id').value = '';
+        document.querySelector('.travel-photo-preview-container').style.display = 'none';
+        tempTravelPhotoBase64 = null;
+        setupDefaultDates();
+    } else if (modalId === 'travelDetailModal') {
+        document.getElementById('travel-expense-form').reset();
+    } else if (modalId === 'noteModal') {
+        document.getElementById('note-form').reset();
+        document.getElementById('edit-note-id').value = '';
     }
+}
+
+let confirmCallback = null;
+
+function showConfirm(message, callback) {
+    document.getElementById('confirm-message').textContent = message;
+    confirmCallback = callback;
+    openModal('confirmModal');
 }
 
 function setupDefaultDates() {
@@ -346,6 +478,11 @@ function setupDefaultDates() {
     if (txDate) txDate.value = todayStr;
     if (loanDate) loanDate.value = todayStr;
     if (repayDate) repayDate.value = todayStr;
+
+    const travelStart = document.getElementById('travel-start-date');
+    const travelEnd = document.getElementById('travel-end-date');
+    if (travelStart) travelStart.value = todayStr;
+    if (travelEnd) travelEnd.value = todayStr;
 }
 
 function updateCategoryOptions() {
@@ -723,16 +860,16 @@ function renderCharts() {
                     {
                         label: 'Total Kas Masuk (' + activeCurrency + ')',
                         data: incomeData,
-                        borderColor: '#2ecc71',
-                        backgroundColor: 'rgba(46, 204, 113, 0.05)',
+                        borderColor: '#ffb300',
+                        backgroundColor: 'rgba(255, 179, 0, 0.05)',
                         fill: true,
                         tension: 0.4
                     },
                     {
                         label: 'Total Kas Keluar (' + activeCurrency + ')',
                         data: expenseData,
-                        borderColor: '#e74c3c',
-                        backgroundColor: 'rgba(231, 76, 60, 0.08)',
+                        borderColor: '#ff3333',
+                        backgroundColor: 'rgba(255, 51, 51, 0.08)',
                         fill: true,
                         tension: 0.4
                     }
@@ -742,11 +879,11 @@ function renderCharts() {
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: {
-                    legend: { labels: { color: '#eef7f2', font: { family: 'Outfit' } } }
+                    legend: { labels: { color: '#ffffff', font: { family: 'Outfit' } } }
                 },
                 scales: {
-                    x: { ticks: { color: '#a8beb2', font: { family: 'Outfit' } }, grid: { color: 'rgba(133,187,101,0.05)' } },
-                    y: { ticks: { color: '#a8beb2', font: { family: 'Outfit' } }, grid: { color: 'rgba(133,187,101,0.05)' } }
+                    x: { ticks: { color: '#d9d2cb', font: { family: 'Outfit' } }, grid: { color: 'rgba(255, 69, 0, 0.05)' } },
+                    y: { ticks: { color: '#d9d2cb', font: { family: 'Outfit' } }, grid: { color: 'rgba(255, 69, 0, 0.05)' } }
                 }
             }
         });
@@ -784,7 +921,7 @@ function renderCharts() {
         if (labels.length === 0) {
             const emptyCtx = ctxCategory.getContext('2d');
             emptyCtx.clearRect(0, 0, ctxCategory.width, ctxCategory.height);
-            emptyCtx.fillStyle = '#6e8579';
+            emptyCtx.fillStyle = '#8c827a';
             emptyCtx.font = '14px Outfit';
             emptyCtx.textAlign = 'center';
             emptyCtx.fillText(`Tidak ada data ${activeCurrency}`, ctxCategory.width / 2, ctxCategory.height / 2);
@@ -798,8 +935,8 @@ function renderCharts() {
                 datasets: [{
                     data: data,
                     backgroundColor: [
-                        '#85bb65', '#2ecc71', '#d4af37', '#e74c3c', 
-                        '#3498db', '#f1c40f', '#9b59b6', '#1abc9c'
+                        '#ff5500', '#ffaa00', '#ff3333', '#e67e22', 
+                        '#ffcc00', '#e74c3c', '#d35400', '#f39c12'
                     ],
                     borderWidth: 1.5,
                     borderColor: 'var(--sidebar-bg)'
@@ -811,7 +948,7 @@ function renderCharts() {
                 plugins: {
                     legend: { 
                         position: 'right',
-                        labels: { color: '#eef7f2', font: { family: 'Outfit', size: 11 } } 
+                        labels: { color: '#ffffff', font: { family: 'Outfit', size: 11 } } 
                     }
                 }
             }
@@ -861,12 +998,12 @@ function saveTransaction(e) {
 }
 
 function deleteTransaction(id) {
-    if (confirm('Apakah Anda yakin ingin menghapus data ini?')) {
+    showConfirm('Apakah Anda yakin ingin menghapus data ini?', () => {
         state.transactions = state.transactions.filter(t => t.id !== id);
         saveDataToLocalStorage();
         updateDashboardUI();
         renderTransactionTable();
-    }
+    });
 }
 
 function editTransaction(id) {
@@ -920,13 +1057,13 @@ function renderTransactionTable() {
         const tCurr = t.currency || 'IDR';
 
         tr.innerHTML = `
-            <td>${formatDateStr(t.date)}</td>
-            <td><strong>${tCurr}</strong></td>
-            <td><strong>${t.category}</strong></td>
-            <td>${t.note}</td>
-            <td><span class="badge ${badgeClass}">${typeStr}</span></td>
-            <td><strong>${formatCurrency(t.amount, tCurr)}</strong></td>
-            <td>
+            <td data-label="Tanggal">${formatDateStr(t.date)}</td>
+            <td data-label="Mata Uang"><strong>${tCurr}</strong></td>
+            <td data-label="Kategori"><strong>${t.category}</strong></td>
+            <td data-label="Keterangan">${t.note}</td>
+            <td data-label="Tipe"><span class="badge ${badgeClass}">${typeStr}</span></td>
+            <td data-label="Jumlah"><strong>${formatCurrency(t.amount, tCurr)}</strong></td>
+            <td data-label="Aksi">
                 <button class="btn btn-secondary btn-sm" onclick="editTransaction('${t.id}')">
                     <i class="fa-solid fa-pen-to-square"></i>
                 </button>
@@ -1033,12 +1170,12 @@ function saveRepayment(e) {
 }
 
 function deleteLoan(id) {
-    if (confirm('Hapus data pinjaman ini? Semua riwayat pengembalian juga akan terhapus.')) {
+    showConfirm('Hapus data pinjaman ini? Semua riwayat pengembalian juga akan terhapus.', () => {
         state.loans = state.loans.filter(l => l.id !== id);
         saveDataToLocalStorage();
         updateDashboardUI();
         renderLoanTable();
-    }
+    });
 }
 
 function renderLoanTable() {
@@ -1087,18 +1224,18 @@ function renderLoanTable() {
         const typeStr = l.type === 'piutang' ? 'Piutang' : 'Hutang';
 
         tr.innerHTML = `
-            <td>${formatDateStr(l.date)}</td>
-            <td><strong>${l.name}</strong><br><small style="color:var(--text-muted);">${l.note}</small></td>
-            <td><strong>${lCurr}</strong></td>
-            <td>${typeStr}</td>
-            <td>${formatCurrency(l.amount, lCurr)}</td>
-            <td style="color: var(--accent-gold); font-size:0.85rem;">${interestRate}% (${formatCurrency(interestAmount, lCurr)})</td>
-            <td style="font-weight: 600;">${formatCurrency(loanTotal, lCurr)}</td>
-            <td style="color:var(--color-success); font-weight: 500;">${formatCurrency(totalRepaid, lCurr)}</td>
-            <td style="font-weight: 700; color: ${isLunas ? 'var(--color-success)' : 'var(--color-danger)'};">${formatCurrency(remaining, lCurr)}</td>
-            <td>${l.dueDate ? formatDateStr(l.dueDate) : '-'}</td>
-            <td>${statusBadge}</td>
-            <td>
+            <td data-label="Tanggal">${formatDateStr(l.date)}</td>
+            <td data-label="Pihak / Nama"><strong>${l.name}</strong><br><small style="color:var(--text-muted);">${l.note}</small></td>
+            <td data-label="Mata Uang"><strong>${lCurr}</strong></td>
+            <td data-label="Tipe">${typeStr}</td>
+            <td data-label="Pinjaman Pokok">${formatCurrency(l.amount, lCurr)}</td>
+            <td data-label="Bunga" style="color: var(--accent-gold); font-size:0.85rem;">${interestRate}% (${formatCurrency(interestAmount, lCurr)})</td>
+            <td data-label="Total Tagihan" style="font-weight: 600;">${formatCurrency(loanTotal, lCurr)}</td>
+            <td data-label="Terbayar" style="color:var(--color-success); font-weight: 500;">${formatCurrency(totalRepaid, lCurr)}</td>
+            <td data-label="Sisa Tagihan" style="font-weight: 700; color: ${isLunas ? 'var(--color-success)' : 'var(--color-danger)'};">${formatCurrency(remaining, lCurr)}</td>
+            <td data-label="Jatuh Tempo">${l.dueDate ? formatDateStr(l.dueDate) : '-'}</td>
+            <td data-label="Status">${statusBadge}</td>
+            <td data-label="Aksi">
                 ${!isLunas ? `<button class="btn btn-primary btn-sm" onclick="openRepayModal('${l.id}')"><i class="fa-solid fa-coins"></i> Cicil</button>` : ''}
                 <button class="btn btn-danger btn-sm" onclick="deleteLoan('${l.id}')">
                     <i class="fa-solid fa-trash"></i>
@@ -1107,4 +1244,505 @@ function renderLoanTable() {
         `;
         tbody.appendChild(tr);
     });
+}
+
+/* ==========================================
+   CONSOLE LOCK & DEVTOOLS BLOCK
+   ========================================== */
+function lockConsole() {
+    // Disable right click
+    document.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+    });
+
+    // Disable developer hotkeys
+    document.addEventListener('keydown', (e) => {
+        if (
+            e.key === 'F12' ||
+            (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'i' || e.key === 'J' || e.key === 'j' || e.key === 'C' || e.key === 'c')) ||
+            (e.ctrlKey && (e.key === 'U' || e.key === 'u'))
+        ) {
+            e.preventDefault();
+            return false;
+        }
+    });
+
+    // Disable console logging completely
+    console.log = function() {};
+    console.warn = function() {};
+    console.error = function() {};
+    console.info = function() {};
+    console.clear = function() {};
+
+    // Clear console aggressively to wipe standard messages
+    setInterval(() => {
+        try {
+            const clear = console.clear;
+            if (clear) clear();
+        } catch(e){}
+    }, 100);
+}
+
+/* ==========================================
+   TRAVEL SECTION MANAGEMENT
+   ========================================== */
+let tempTravelPhotoBase64 = null;
+
+function previewTravelPhoto(input) {
+    const file = input.files[0];
+    const previewContainer = document.querySelector('.travel-photo-preview-container');
+    const previewImg = document.getElementById('travel-photo-preview');
+    if (file) {
+        if (file.size > 1500000) {
+            alert('Ukuran foto terlalu besar! Harap gunakan gambar di bawah 1.5MB.');
+            input.value = '';
+            tempTravelPhotoBase64 = null;
+            previewImg.src = "";
+            previewContainer.style.display = 'none';
+            return;
+        }
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            tempTravelPhotoBase64 = e.target.result;
+            previewImg.src = tempTravelPhotoBase64;
+            previewContainer.style.display = 'block';
+        };
+        reader.readAsDataURL(file);
+    } else {
+        tempTravelPhotoBase64 = null;
+        previewImg.src = "";
+        previewContainer.style.display = 'none';
+    }
+}
+
+function saveTravel(e) {
+    e.preventDefault();
+    const idInput = document.getElementById('edit-travel-id').value;
+    const name = document.getElementById('travel-name').value.trim();
+    const destination = document.getElementById('travel-destination').value.trim();
+    const budget = parseFormattedNumber(document.getElementById('travel-budget').value) || 0;
+    const startDate = document.getElementById('travel-start-date').value;
+    const endDate = document.getElementById('travel-end-date').value;
+    const description = document.getElementById('travel-description').value.trim();
+    
+    if (idInput) {
+        const travel = state.travels.find(t => t.id === idInput);
+        if (travel) {
+            travel.name = name;
+            travel.destination = destination;
+            travel.budget = budget;
+            travel.startDate = startDate;
+            travel.endDate = endDate;
+            travel.description = description;
+            if (tempTravelPhotoBase64) {
+                travel.photo = tempTravelPhotoBase64;
+            }
+        }
+    } else {
+        const newTravel = {
+            id: 'travel-' + Date.now(),
+            name: name,
+            destination: destination,
+            budget: budget,
+            startDate: startDate,
+            endDate: endDate,
+            description: description,
+            photo: tempTravelPhotoBase64 || null,
+            expenses: []
+        };
+        state.travels.push(newTravel);
+    }
+    
+    saveDataToLocalStorage();
+    closeModal('travelModal');
+    renderTravels();
+}
+
+function renderTravels() {
+    const container = document.getElementById('travel-grid-container');
+    if (!container) return;
+    
+    const query = (document.getElementById('search-travel')?.value || '').toLowerCase().trim();
+    container.innerHTML = '';
+    
+    const filtered = state.travels.filter(t => 
+        t.name.toLowerCase().includes(query) || 
+        t.destination.toLowerCase().includes(query) ||
+        (t.description && t.description.toLowerCase().includes(query))
+    );
+    
+    if (filtered.length === 0) {
+        container.innerHTML = '<div class="empty-list" style="grid-column: 1/-1;">Belum ada perjalanan terdaftar.</div>';
+        return;
+    }
+    
+    filtered.forEach(t => {
+        const totalSpent = t.expenses ? t.expenses.reduce((sum, e) => sum + e.amount, 0) : 0;
+        const percent = t.budget > 0 ? Math.min(100, Math.round((totalSpent / t.budget) * 100)) : 0;
+        const isOver = totalSpent > t.budget;
+        const progressBarColor = isOver ? 'var(--color-danger)' : 'var(--color-success)';
+        
+        const card = document.createElement('div');
+        card.className = 'travel-card';
+        
+        const coverSrc = t.photo || 'naruto.jpg';
+        
+        card.innerHTML = `
+            <div class="travel-card-img-wrapper">
+                <img class="travel-card-img" src="${coverSrc}" alt="${t.name}">
+                <div class="travel-card-actions">
+                    <button class="travel-card-action-btn" onclick="openEditTravel('${t.id}', event)"><i class="fa-solid fa-pen"></i></button>
+                    <button class="travel-card-action-btn btn-delete" onclick="deleteTravel('${t.id}', event)"><i class="fa-solid fa-trash"></i></button>
+                </div>
+            </div>
+            <div class="travel-card-content" onclick="openTravelDetail('${t.id}')" style="cursor: pointer;">
+                <div class="travel-card-body">
+                    <h4>${t.name}</h4>
+                    <p class="travel-card-dest"><i class="fa-solid fa-location-dot"></i> ${t.destination}</p>
+                    <p class="travel-card-dates"><i class="fa-solid fa-calendar-days"></i> ${formatDateStr(t.startDate)} - ${formatDateStr(t.endDate)}</p>
+                    <p class="travel-card-desc">${t.description || 'Tidak ada deskripsi.'}</p>
+                </div>
+                <div class="travel-card-budget-section">
+                    <div class="travel-progress-text">
+                        <span>Budget: ${formatCurrency(t.budget, 'IDR')}</span>
+                        <span style="color: ${progressBarColor};">${percent}%</span>
+                    </div>
+                    <div class="travel-progress-bar-bg">
+                        <div class="travel-progress-bar" style="width: ${percent}%; background-color: ${progressBarColor};"></div>
+                    </div>
+                </div>
+            </div>
+        `;
+        container.appendChild(card);
+    });
+}
+
+function deleteTravel(id, event) {
+    if (event) event.stopPropagation();
+    showConfirm('Hapus catatan perjalanan ini?', () => {
+        state.travels = state.travels.filter(t => t.id !== id);
+        saveDataToLocalStorage();
+        renderTravels();
+    });
+}
+
+function openEditTravel(id, event) {
+    if (event) event.stopPropagation();
+    const travel = state.travels.find(t => t.id === id);
+    if (!travel) return;
+    
+    document.getElementById('edit-travel-id').value = travel.id;
+    document.getElementById('travel-name').value = travel.name;
+    document.getElementById('travel-destination').value = travel.destination;
+    document.getElementById('travel-budget').value = new Intl.NumberFormat('id-ID').format(travel.budget);
+    document.getElementById('travel-start-date').value = travel.startDate;
+    document.getElementById('travel-end-date').value = travel.endDate;
+    document.getElementById('travel-description').value = travel.description || '';
+    
+    const previewContainer = document.querySelector('.travel-photo-preview-container');
+    const previewImg = document.getElementById('travel-photo-preview');
+    if (travel.photo) {
+        tempTravelPhotoBase64 = travel.photo;
+        previewImg.src = travel.photo;
+        previewContainer.style.display = 'block';
+    } else {
+        tempTravelPhotoBase64 = null;
+        previewImg.src = '';
+        previewContainer.style.display = 'none';
+    }
+    
+    openModal('travelModal');
+}
+
+function openTravelDetail(id) {
+    const travel = state.travels.find(t => t.id === id);
+    if (!travel) return;
+    
+    document.getElementById('te-travel-id').value = travel.id;
+    document.getElementById('td-title').textContent = travel.name;
+    document.getElementById('td-dest-dates').innerHTML = `<i class="fa-solid fa-location-dot"></i> ${travel.destination} <span style="font-size: 0.8rem; font-weight: normal; margin-left: 10px;"><i class="fa-solid fa-calendar-days"></i> ${formatDateStr(travel.startDate)} - ${formatDateStr(travel.endDate)}</span>`;
+    document.getElementById('td-desc').textContent = travel.description || 'Tidak ada deskripsi.';
+    
+    const coverImg = document.getElementById('td-cover');
+    coverImg.src = travel.photo || 'naruto.jpg';
+    
+    const totalSpent = travel.expenses ? travel.expenses.reduce((sum, e) => sum + e.amount, 0) : 0;
+    const remaining = travel.budget - totalSpent;
+    const percent = travel.budget > 0 ? Math.min(100, Math.round((totalSpent / travel.budget) * 100)) : 0;
+    const isOver = totalSpent > travel.budget;
+    
+    document.getElementById('td-budget-val').textContent = formatCurrency(travel.budget, 'IDR');
+    document.getElementById('td-spent-val').textContent = formatCurrency(totalSpent, 'IDR');
+    document.getElementById('td-remaining-val').textContent = formatCurrency(remaining, 'IDR');
+    
+    const remainingEl = document.getElementById('td-remaining-val');
+    if (remaining < 0) {
+        remainingEl.style.color = 'var(--color-danger)';
+    } else {
+        remainingEl.style.color = 'var(--color-success)';
+    }
+    
+    document.getElementById('td-progress-percent').textContent = `${percent}%`;
+    const progressBar = document.getElementById('td-progress-bar');
+    progressBar.style.width = `${percent}%`;
+    progressBar.style.backgroundColor = isOver ? 'var(--color-danger)' : 'var(--color-success)';
+    
+    renderTravelExpensesTable(travel);
+    openModal('travelDetailModal');
+}
+
+function addTravelExpense(e) {
+    e.preventDefault();
+    const travelId = document.getElementById('te-travel-id').value;
+    const note = document.getElementById('te-note').value.trim();
+    const category = document.getElementById('te-category').value;
+    const amount = parseFormattedNumber(document.getElementById('te-amount').value) || 0;
+    
+    const travel = state.travels.find(t => t.id === travelId);
+    if (!travel) return;
+    if (!travel.expenses) travel.expenses = [];
+    
+    const newExpense = {
+        id: 'te-' + Date.now(),
+        note: note,
+        category: category,
+        amount: amount,
+        date: new Date().toISOString().split('T')[0]
+    };
+    
+    travel.expenses.push(newExpense);
+    saveDataToLocalStorage();
+    
+    document.getElementById('te-note').value = '';
+    document.getElementById('te-amount').value = '';
+    
+    openTravelDetail(travelId);
+    renderTravels();
+}
+
+function deleteTravelExpense(expenseId) {
+    const travelId = document.getElementById('te-travel-id').value;
+    const travel = state.travels.find(t => t.id === travelId);
+    if (!travel) return;
+    
+    showConfirm('Hapus pengeluaran ini?', () => {
+        travel.expenses = travel.expenses.filter(e => e.id !== expenseId);
+        saveDataToLocalStorage();
+        openTravelDetail(travelId);
+        renderTravels();
+    });
+}
+
+function renderTravelExpensesTable(travel) {
+    const tbody = document.getElementById('te-table-body');
+    if (!tbody) return;
+    
+    tbody.innerHTML = '';
+    const expenses = travel.expenses || [];
+    if (expenses.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" class="empty-list" style="text-align:center;">Belum ada pengeluaran dicatat.</td></tr>';
+        return;
+    }
+    
+    expenses.forEach(e => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td data-label="Keterangan">${e.note}</td>
+            <td data-label="Kategori"><span class="badge badge-expense">${e.category}</span></td>
+            <td data-label="Jumlah">${formatCurrency(e.amount, 'IDR')}</td>
+            <td data-label="Aksi">
+                <button class="btn btn-danger btn-sm" onclick="deleteTravelExpense('${e.id}')"><i class="fa-solid fa-trash"></i></button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+function filterTravels() {
+    renderTravels();
+}
+
+/* ==========================================
+   CHAKRA PARTICLES ANIMATION (LOGIN PAGE)
+   ========================================== */
+function initChakraParticles() {
+    const canvas = document.getElementById('chakra-particles');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    
+    let width = canvas.width = window.innerWidth;
+    let height = canvas.height = window.innerHeight;
+    
+    window.addEventListener('resize', () => {
+        if (!canvas) return;
+        width = canvas.width = window.innerWidth;
+        height = canvas.height = window.innerHeight;
+    });
+    
+    const particles = [];
+    const maxParticles = 65;
+    
+    class Particle {
+        constructor() {
+            this.reset();
+        }
+        reset() {
+            this.x = Math.random() * width;
+            this.y = height + Math.random() * 50;
+            this.size = Math.random() * 3 + 1.2;
+            this.speedY = -(Math.random() * 1.6 + 0.6);
+            this.speedX = (Math.random() - 0.5) * 0.8;
+            this.opacity = Math.random() * 0.55 + 0.3;
+            const colors = ['#ff4500', '#ff7a00', '#ffaa00', '#ff1a00'];
+            this.color = colors[Math.floor(Math.random() * colors.length)];
+        }
+        update() {
+            this.y += this.speedY;
+            this.x += this.speedX;
+            this.opacity -= 0.0025;
+            
+            if (this.y < -10 || this.opacity <= 0 || this.x < -10 || this.x > width + 10) {
+                this.reset();
+            }
+        }
+        draw() {
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+            ctx.fillStyle = this.color;
+            ctx.shadowBlur = 12;
+            ctx.shadowColor = this.color;
+            ctx.globalAlpha = this.opacity;
+            ctx.fill();
+        }
+    }
+    
+    for (let i = 0; i < maxParticles; i++) {
+        particles.push(new Particle());
+    }
+    
+    function animate() {
+        const loginContainer = document.getElementById('login-container');
+        if (!loginContainer || loginContainer.style.display === 'none') {
+            requestAnimationFrame(animate);
+            return;
+        }
+        
+        ctx.clearRect(0, 0, width, height);
+        ctx.shadowBlur = 0;
+        
+        particles.forEach(p => {
+            p.update();
+            p.draw();
+        });
+        
+        requestAnimationFrame(animate);
+    }
+    
+    animate();
+}
+
+/* ==========================================
+   NOTEPAD / BUKU CATATAN MANAGEMENT
+   ========================================== */
+function saveNote(e) {
+    e.preventDefault();
+    const idInput = document.getElementById('edit-note-id').value;
+    const title = document.getElementById('note-title').value.trim();
+    const tag = document.getElementById('note-tag').value;
+    const content = document.getElementById('note-content').value.trim();
+    
+    if (idInput) {
+        const note = state.notes.find(n => n.id === idInput);
+        if (note) {
+            note.title = title;
+            note.tag = tag;
+            note.content = content;
+            note.date = new Date().toISOString().split('T')[0];
+        }
+    } else {
+        const newNote = {
+            id: 'note-' + Date.now(),
+            title: title,
+            tag: tag,
+            content: content,
+            date: new Date().toISOString().split('T')[0]
+        };
+        state.notes.push(newNote);
+    }
+    
+    saveDataToLocalStorage();
+    closeModal('noteModal');
+    renderNotes();
+}
+
+function renderNotes() {
+    const container = document.getElementById('notes-grid-container');
+    if (!container) return;
+    
+    const query = (document.getElementById('search-notes')?.value || '').toLowerCase().trim();
+    container.innerHTML = '';
+    
+    const filtered = state.notes.filter(n => 
+        n.title.toLowerCase().includes(query) || 
+        n.content.toLowerCase().includes(query) ||
+        n.tag.toLowerCase().includes(query)
+    );
+    
+    if (filtered.length === 0) {
+        container.innerHTML = '<div class="empty-list" style="grid-column: 1/-1; text-align:center; padding: 2rem;">Belum ada catatan disimpan.</div>';
+        return;
+    }
+    
+    filtered.forEach(n => {
+        const card = document.createElement('div');
+        card.className = 'note-card';
+        
+        let tagColor = 'var(--text-muted)';
+        if (n.tag === 'Penting') tagColor = 'var(--color-danger)';
+        else if (n.tag === 'Ide') tagColor = 'var(--accent-gold)';
+        else if (n.tag === 'Pribadi') tagColor = 'var(--color-success)';
+        else if (n.tag === 'Pekerjaan') tagColor = 'var(--accent-orange)';
+        
+        card.innerHTML = `
+            <div class="note-card-header">
+                <span class="note-card-tag" style="border: 1px solid ${tagColor}; color: ${tagColor};">${n.tag}</span>
+                <div class="note-card-actions">
+                    <button class="note-card-action-btn" onclick="openEditNote('${n.id}', event)"><i class="fa-solid fa-pen"></i></button>
+                    <button class="note-card-action-btn btn-delete" onclick="deleteNote('${n.id}', event)"><i class="fa-solid fa-trash"></i></button>
+                </div>
+            </div>
+            <div class="note-card-body" onclick="openEditNote('${n.id}', event)">
+                <h4 class="note-card-title">${n.title}</h4>
+                <p class="note-card-desc">${n.content.replace(/\n/g, '<br>')}</p>
+                <div class="note-card-date">${formatDateStr(n.date)}</div>
+            </div>
+        `;
+        container.appendChild(card);
+    });
+}
+
+function deleteNote(id, event) {
+    if (event) event.stopPropagation();
+    showConfirm('Hapus catatan ini?', () => {
+        state.notes = state.notes.filter(n => n.id !== id);
+        saveDataToLocalStorage();
+        renderNotes();
+    });
+}
+
+function openEditNote(id, event) {
+    if (event) event.stopPropagation();
+    const note = state.notes.find(n => n.id === id);
+    if (!note) return;
+    
+    document.getElementById('edit-note-id').value = note.id;
+    document.getElementById('note-title').value = note.title;
+    document.getElementById('note-tag').value = note.tag;
+    document.getElementById('note-content').value = note.content;
+    
+    openModal('noteModal');
+}
+
+function filterNotes() {
+    renderNotes();
 }
