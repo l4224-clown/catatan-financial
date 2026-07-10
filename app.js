@@ -333,9 +333,10 @@ async function loadFromGoogleSheets() {
                 type: row[2],
                 currency: row[3],
                 amount: parseFloat(row[4]) || 0,
-                interestRate: parseFloat(row[5]) || 20,
-                tenor: parseInt(row[7]) || 1,
+                interestRate: isNaN(parseFloat(row[5])) ? 20 : parseFloat(row[5]),
+                date: row[8] || new Date().toISOString().split('T')[0],
                 dueDate: row[8],
+                tenor: parseInt(row[7]) || 1,
                 repayments: row[10] ? JSON.parse(row[10]) : []
             }));
             localStorage.setItem('fina_loans', JSON.stringify(state.loans));
@@ -772,7 +773,7 @@ function renderRecentTransactions() {
                 subtitle: 'Pinjaman Baru',
                 amount: l.amount,
                 type: l.type === 'piutang' ? 'keluar' : 'masuk',
-                date: l.date,
+                date: l.date || l.dueDate || new Date().toISOString().split('T')[0],
                 currency: lCurr,
                 icon: 'fa-solid fa-handshake',
                 badgeClass: 'badge-pending'
