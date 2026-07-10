@@ -1,4 +1,38 @@
 /* ==========================================
+   GLOBAL ERROR CATCHER (FOR DEBUGGING)
+   ========================================== */
+window.onerror = function(message, source, lineno, colno, error) {
+    showVisualError("Uncaught Error: " + message + " at line " + lineno + " (col " + colno + ")");
+    return false;
+};
+window.onunhandledrejection = function(event) {
+    showVisualError("Unhandled Promise Rejection: " + event.reason);
+};
+
+function showVisualError(errText) {
+    let errDiv = document.getElementById('visual-error-banner');
+    if (!errDiv) {
+        errDiv = document.createElement('div');
+        errDiv.id = 'visual-error-banner';
+        errDiv.style.position = 'fixed';
+        errDiv.style.top = '0';
+        errDiv.style.left = '0';
+        errDiv.style.width = '100%';
+        errDiv.style.backgroundColor = '#ff3333';
+        errDiv.style.color = '#ffffff';
+        errDiv.style.padding = '12px 20px';
+        errDiv.style.zIndex = '999999';
+        errDiv.style.fontFamily = 'monospace';
+        errDiv.style.fontSize = '13px';
+        errDiv.style.whiteSpace = 'pre-wrap';
+        errDiv.style.boxShadow = '0 6px 15px rgba(0,0,0,0.6)';
+        errDiv.style.borderBottom = '2px solid #ffcc00';
+        document.body.appendChild(errDiv);
+    }
+    errDiv.textContent += errText + "\n";
+}
+
+/* ==========================================
    APP STATE & INITIAL DATA
    ========================================== */
 let state = {
@@ -264,10 +298,13 @@ async function syncToGoogleSheets() {
 async function loadFromGoogleSheets() {
     isSyncing = true;
     showSyncStatus("Mengunduh data online...");
+    
+    let errorsCount = 0;
+    
+    // 1. Transaksi
     try {
         const responseTx = await fetch(`${API_URL}?sheet=Transaksi`);
         const jsonTx = await responseTx.json();
-        
         if (jsonTx.status === 'success' && jsonTx.data) {
             state.transactions = jsonTx.data.map(row => ({
                 id: row[0],
@@ -278,11 +315,17 @@ async function loadFromGoogleSheets() {
                 amount: parseFloat(row[5]) || 0,
                 note: row[6]
             }));
+            localStorage.setItem('fina_transactions', JSON.stringify(state.transactions));
         }
-
+    } catch (e) {
+        console.error("Gagal memuat sheet Transaksi:", e);
+        errorsCount++;
+    }
+    
+    // 2. Pinjaman
+    try {
         const responseLoan = await fetch(`${API_URL}?sheet=Pinjaman`);
         const jsonLoan = await responseLoan.json();
-        
         if (jsonLoan.status === 'success' && jsonLoan.data) {
             state.loans = jsonLoan.data.map(row => ({
                 id: row[0],
@@ -295,11 +338,17 @@ async function loadFromGoogleSheets() {
                 dueDate: row[8],
                 repayments: row[10] ? JSON.parse(row[10]) : []
             }));
+            localStorage.setItem('fina_loans', JSON.stringify(state.loans));
         }
-
+    } catch (e) {
+        console.error("Gagal memuat sheet Pinjaman:", e);
+        errorsCount++;
+    }
+    
+    // 3. Perjalanan
+    try {
         const responseTravel = await fetch(`${API_URL}?sheet=Perjalanan`);
         const jsonTravel = await responseTravel.json();
-        
         if (jsonTravel.status === 'success' && jsonTravel.data) {
             state.travels = jsonTravel.data.map(row => ({
                 id: row[0],
@@ -312,11 +361,17 @@ async function loadFromGoogleSheets() {
                 photo: row[7] || null,
                 expenses: row[8] ? JSON.parse(row[8]) : []
             }));
+            localStorage.setItem('fina_travels', JSON.stringify(state.travels));
         }
-
+    } catch (e) {
+        console.error("Gagal memuat sheet Perjalanan:", e);
+        errorsCount++;
+    }
+    
+    // 4. Catatan (Notepad)
+    try {
         const responseNotes = await fetch(`${API_URL}?sheet=Catatan`);
         const jsonNotes = await responseNotes.json();
-        
         if (jsonNotes.status === 'success' && jsonNotes.data) {
             state.notes = jsonNotes.data.map(row => ({
                 id: row[0],
@@ -325,26 +380,30 @@ async function loadFromGoogleSheets() {
                 tag: row[3] || 'Lainnya',
                 date: row[4]
             }));
-        }
-
-        localStorage.setItem('fina_transactions', JSON.stringify(state.transactions));
-        localStorage.setItem('fina_loans', JSON.stringify(state.loans));
-        localStorage.setItem('fina_travels', JSON.stringify(state.travels));
-        localStorage.setItem('fina_notes', JSON.stringify(state.notes));
-
-        isSyncing = false;
-        showSyncStatus("Data sinkron dengan Google Sheets!");
-        updateDashboardUI();
-        if (document.getElementById('travel-section')?.classList.contains('active')) {
-            renderTravels();
-        }
-        if (document.getElementById('notes-section')?.classList.contains('active')) {
-            renderNotes();
+            localStorage.setItem('fina_notes', JSON.stringify(state.notes));
         }
     } catch (e) {
-        console.error("Gagal mengunduh data online:", e);
-        isSyncing = false;
+        console.error("Gagal memuat sheet Catatan:", e);
+        errorsCount++;
+    }
+
+    isSyncing = false;
+    if (errorsCount === 4) {
         showSyncStatus("Gagal sinkron online, memuat data lokal", true);
+        updateDashboardUI();
+    } else if (errorsCount > 0) {
+        showSyncStatus(`Sinkron sebagian (${4 - errorsCount}/4 sukses)`, false);
+        updateDashboardUI();
+    } else {
+        showSyncStatus("Data sinkron dengan Google Sheets!");
+        updateDashboardUI();
+    }
+    
+    if (document.getElementById('travel-section')?.classList.contains('active')) {
+        renderTravels();
+    }
+    if (document.getElementById('notes-section')?.classList.contains('active')) {
+        renderNotes();
     }
 }
 
@@ -354,10 +413,33 @@ function loadDataFromLocalStorage() {
     const savedTravels = localStorage.getItem('fina_travels');
     const savedNotes = localStorage.getItem('fina_notes');
     
-    if (savedTransactions) state.transactions = JSON.parse(savedTransactions);
-    if (savedLoans) state.loans = JSON.parse(savedLoans);
-    if (savedTravels) state.travels = JSON.parse(savedTravels);
-    if (savedNotes) state.notes = JSON.parse(savedNotes);
+    try {
+        if (savedTransactions) state.transactions = JSON.parse(savedTransactions);
+    } catch(e) {
+        console.error("Gagal membaca data transaksi lokal:", e);
+        state.transactions = [];
+    }
+
+    try {
+        if (savedLoans) state.loans = JSON.parse(savedLoans);
+    } catch(e) {
+        console.error("Gagal membaca data pinjaman lokal:", e);
+        state.loans = [];
+    }
+
+    try {
+        if (savedTravels) state.travels = JSON.parse(savedTravels);
+    } catch(e) {
+        console.error("Gagal membaca data perjalanan lokal:", e);
+        state.travels = [];
+    }
+
+    try {
+        if (savedNotes) state.notes = JSON.parse(savedNotes);
+    } catch(e) {
+        console.error("Gagal membaca catatan lokal:", e);
+        state.notes = [];
+    }
 
     loadFromGoogleSheets();
 }
