@@ -899,7 +899,8 @@ function renderCharts() {
         state.transactions.forEach(t => {
             const tCurr = t.currency || 'IDR';
             if (tCurr === activeCurrency) {
-                const mKey = t.date.substring(0, 7);
+                const tDate = t.date || new Date().toISOString().split('T')[0];
+                const mKey = tDate.substring(0, 7);
                 const bucket = last6Months.find(m => m.monthKey === mKey);
                 if (bucket) {
                     if (t.type === 'masuk') bucket.income += t.amount;
@@ -911,21 +912,25 @@ function renderCharts() {
         state.loans.forEach(l => {
             const lCurr = l.currency || 'IDR';
             if (lCurr === activeCurrency) {
-                const mKeyInit = l.date.substring(0, 7);
+                const lDate = l.date || l.dueDate || new Date().toISOString().split('T')[0];
+                const mKeyInit = lDate.substring(0, 7);
                 const bucketInit = last6Months.find(m => m.monthKey === mKeyInit);
                 if (bucketInit) {
                     if (l.type === 'piutang') bucketInit.expense += l.amount;
                     else bucketInit.income += l.amount;
                 }
 
-                l.repayments.forEach(r => {
-                    const mKeyRep = r.date.substring(0, 7);
-                    const bucketRep = last6Months.find(m => m.monthKey === mKeyRep);
-                    if (bucketRep) {
-                        if (l.type === 'piutang') bucketRep.income += r.amount;
-                        else bucketRep.expense += r.amount;
-                    }
-                });
+                if (l.repayments) {
+                    l.repayments.forEach(r => {
+                        const rDate = r.date || new Date().toISOString().split('T')[0];
+                        const mKeyRep = rDate.substring(0, 7);
+                        const bucketRep = last6Months.find(m => m.monthKey === mKeyRep);
+                        if (bucketRep) {
+                            if (l.type === 'piutang') bucketRep.income += r.amount;
+                            else bucketRep.expense += r.amount;
+                        }
+                    });
+                }
             }
         });
 
