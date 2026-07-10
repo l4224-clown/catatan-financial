@@ -1833,3 +1833,52 @@ function openEditNote(id, event) {
 function filterNotes() {
     renderNotes();
 }
+
+// GLOBAL KEYBOARD SHORTCUTS (ESC & SPACE)
+document.addEventListener('keydown', (e) => {
+    // ESC: Menutup modal aktif (atau batalkan konfirmasi)
+    if (e.key === 'Escape') {
+        const activeModal = document.querySelector('.modal.active');
+        if (activeModal) {
+            e.preventDefault();
+            const modalId = activeModal.id;
+            if (modalId === 'confirmModal') {
+                const cancelBtn = document.getElementById('confirm-cancel-btn');
+                if (cancelBtn) cancelBtn.click();
+            } else {
+                closeModal(modalId);
+            }
+        }
+    }
+    
+    // SPASI: Buka/Tutup Transaksi Baru (jika sudah masuk) atau Play/Pause Video Naruto (jika di halaman depan)
+    if (e.key === ' ' || e.key === 'Spacebar') {
+        // Jangan jalankan jika user sedang mengetik di kolom input/textarea
+        const targetTag = e.target.tagName.toLowerCase();
+        if (targetTag === 'input' || targetTag === 'textarea' || targetTag === 'select' || e.target.isContentEditable) {
+            return;
+        }
+        
+        e.preventDefault(); // Cegah halaman scroll otomatis saat tekan spasi
+        
+        const isLogged = sessionStorage.getItem('heist_authorized') === 'true';
+        if (isLogged) {
+            const txModal = document.getElementById('transactionModal');
+            if (txModal && txModal.classList.contains('active')) {
+                closeModal('transactionModal');
+            } else {
+                openModal('transactionModal');
+            }
+        } else {
+            // Play/Pause video Naruto Kyubi di login portal
+            const video = document.querySelector('.login-video-bg');
+            if (video) {
+                if (video.paused) {
+                    video.play();
+                } else {
+                    video.pause();
+                }
+            }
+        }
+    }
+});
