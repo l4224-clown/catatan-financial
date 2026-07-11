@@ -69,6 +69,9 @@
                 <a href="#" class="nav-item" data-target="travel-section">
                     <i class="fa-solid fa-suitcase-rolling"></i> Catatan Perjalanan
                 </a>
+                <a href="#" class="nav-item" data-target="goals-section">
+                    <i class="fa-solid fa-piggy-bank"></i> Pos Keuangan
+                </a>
                 <a href="#" class="nav-item" data-target="notes-section">
                     <i class="fa-solid fa-note-sticky"></i> Buku Catatan
                 </a>
@@ -95,6 +98,9 @@
                     </button>
                     <button class="btn btn-secondary btn-add-loan" onclick="openModal('loanModal')">
                         <i class="fa-solid fa-handshake"></i> Catat Pinjaman
+                    </button>
+                    <button class="btn btn-accent btn-add-goal" onclick="openModal('goalModal')" style="background-color: rgba(0, 200, 255, 0.15); color: #00c8ff; border: 1px solid rgba(0, 200, 255, 0.25);">
+                        <i class="fa-solid fa-piggy-bank"></i> Pos Dana Baru
                     </button>
                     <button class="btn btn-danger" onclick="handleLogout()" style="background-color: var(--color-danger-bg); color: var(--color-danger); border: 1px solid rgba(255, 51, 51, 0.25);">
                         <i class="fa-solid fa-right-from-bracket"></i> Keluar
@@ -146,6 +152,14 @@
                         <div class="card-info">
                             <h3>Sisa Piutang / Utang (<span class="active-currency-label">IDR</span>)</h3>
                             <p class="amount" id="total-loans">0</p>
+                        </div>
+                    </div>
+                    <!-- Savings Card -->
+                    <div class="summary-card savings-card" style="border-left: 4px solid #00c8ff;">
+                        <div class="card-icon" style="background-color: rgba(0, 200, 255, 0.15); color: #00c8ff;"><i class="fa-solid fa-piggy-bank"></i></div>
+                        <div class="card-info">
+                            <h3>Tabungan Pos Dana (<span class="active-currency-label">IDR</span>)</h3>
+                            <p class="amount" id="total-savings" style="color: #00c8ff;">0</p>
                         </div>
                     </div>
                 </div>
@@ -328,6 +342,52 @@
                     </div>
                     
                     <div class="notes-grid" id="notes-grid-container">
+                        <!-- JS populated -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- 6. GOALS SECTION -->
+            <section id="goals-section" class="content-section">
+                <!-- Goals Summary Stats -->
+                <div class="goals-summary-container" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
+                    <div class="stat-card" style="border-left: 4px solid var(--accent-orange); background: var(--bg-secondary); padding: 1.5rem; border-radius: 16px; display: flex; justify-content: space-between; align-items: center; border: 1px solid var(--border-color);">
+                        <div>
+                            <p style="font-size: 0.75rem; color: var(--text-muted); font-weight: 700; margin-bottom: 0.5rem; text-transform: uppercase;">Total Target Pos Dana</p>
+                            <h3 id="goals-total-target" style="font-size: 1.5rem; font-weight: 800; color: #ffffff;">Rp 0</h3>
+                        </div>
+                        <div style="font-size: 1.8rem; color: var(--accent-orange); opacity: 0.8;"><i class="fa-solid fa-bullseye"></i></div>
+                    </div>
+                    <div class="stat-card" style="border-left: 4px solid var(--color-success); background: var(--bg-secondary); padding: 1.5rem; border-radius: 16px; display: flex; justify-content: space-between; align-items: center; border: 1px solid var(--border-color);">
+                        <div>
+                            <p style="font-size: 0.75rem; color: var(--text-muted); font-weight: 700; margin-bottom: 0.5rem; text-transform: uppercase;">Total Uang Terkumpul</p>
+                            <h3 id="goals-total-balance" style="font-size: 1.5rem; font-weight: 800; color: var(--color-success);">Rp 0</h3>
+                        </div>
+                        <div style="font-size: 1.8rem; color: var(--color-success); opacity: 0.8;"><i class="fa-solid fa-piggy-bank"></i></div>
+                    </div>
+                    <div class="stat-card" style="border-left: 4px solid #00c8ff; background: var(--bg-secondary); padding: 1.5rem; border-radius: 16px; display: flex; justify-content: space-between; align-items: center; border: 1px solid var(--border-color);">
+                        <div>
+                            <p style="font-size: 0.75rem; color: var(--text-muted); font-weight: 700; margin-bottom: 0.5rem; text-transform: uppercase;">Sisa Target Alokasi</p>
+                            <h3 id="goals-total-remaining" style="font-size: 1.5rem; font-weight: 800; color: #00c8ff;">Rp 0</h3>
+                        </div>
+                        <div style="font-size: 1.8rem; color: #00c8ff; opacity: 0.8;"><i class="fa-solid fa-hourglass-half"></i></div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="table-actions">
+                        <div class="search-box">
+                            <i class="fa-solid fa-magnifying-glass"></i>
+                            <input type="text" id="search-goals" placeholder="Cari pos dana..." oninput="filterGoals()">
+                        </div>
+                        <div class="filter-group">
+                            <button class="btn btn-primary btn-sm" onclick="openModal('goalModal')">
+                                <i class="fa-solid fa-plus"></i> Buat Pos Baru
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="goals-grid" id="goals-grid-container">
                         <!-- JS populated -->
                     </div>
                 </div>
@@ -666,6 +726,166 @@
         </div>
     </div>
 
+    <!-- MODAL: KELOLA POS KEUANGAN BARU -->
+    <div id="goalModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Buat Pos Keuangan Baru</h2>
+                <span class="close-btn" onclick="closeModal('goalModal')">&times;</span>
+            </div>
+            <form id="goal-form" onsubmit="saveGoal(event)">
+                <div class="form-group">
+                    <label for="goal-name">Nama Tujuan Pos Dana</label>
+                    <input type="text" id="goal-name" placeholder="Misal: Arisan Kurban, Liburan Jepang, Tabungan Laptop" required>
+                </div>
+                <div class="form-group-row" style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                    <div class="form-group" style="flex: 1; min-width: 140px;">
+                        <label for="goal-currency">Mata Uang</label>
+                        <select id="goal-currency" required>
+                            <option value="IDR">IDR (Rupiah)</option>
+                            <option value="USD">USD (Dollar)</option>
+                            <option value="KHR">KHR (Riel)</option>
+                            <option value="THB">THB (Baht)</option>
+                        </select>
+                    </div>
+                    <div class="form-group" style="flex: 1; min-width: 140px;">
+                        <label for="goal-category">Kategori Pos</label>
+                        <select id="goal-category" required>
+                            <option value="Tabungan">Tabungan / Arisan</option>
+                            <option value="Emergency">Dana Darurat</option>
+                            <option value="Investasi">Investasi / Aset</option>
+                            <option value="Hiburan">Kesenangan / Liburan</option>
+                            <option value="Kebutuhan">Target Pembelian barang</option>
+                            <option value="Emas">Investasi Emas (Gram & Beli)</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group-row" style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                    <div class="form-group" style="flex: 1; min-width: 140px;">
+                        <label for="goal-target">Target Jumlah Dana</label>
+                        <input type="text" id="goal-target" placeholder="Target nominal (opsional)..." oninput="formatInputGoalTarget(this)">
+                    </div>
+                    <div class="form-group" style="flex: 1; min-width: 140px;">
+                        <label for="goal-initial">Setoran Awal (Opsional)</label>
+                        <input type="text" id="goal-initial" placeholder="Kurangi dari Saldo Utama..." oninput="formatInputCurrency(this)">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('goalModal')">Batal</button>
+                    <button type="submit" class="btn btn-primary">Buat Pos Dana</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: MUTASI POS DANA (SETOR / TARIK) -->
+    <div id="goalActionModal" class="modal">
+        <div class="modal-content" style="max-width: 400px;">
+            <div class="modal-header">
+                <h2 id="goal-action-title">Alokasi Dana</h2>
+                <span class="close-btn" onclick="closeModal('goalActionModal')">&times;</span>
+            </div>
+            <form id="goal-action-form" onsubmit="handleGoalAction(event)">
+                <input type="hidden" id="goal-action-id">
+                <input type="hidden" id="goal-action-type">
+                
+                <!-- Gold Inputs Container -->
+                <div id="gold-inputs-container" style="display: none; margin-bottom: 1rem; border-bottom: 1px dashed rgba(255,255,255,0.1); padding-bottom: 1rem;">
+                    <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                        <div class="form-group" style="flex: 1; min-width: 120px; margin-bottom: 0;">
+                            <label for="goal-action-grams">Jumlah Gram</label>
+                            <input type="number" id="goal-action-grams" step="0.001" min="0.001" placeholder="Misal: 0.5, 1" oninput="calculateGoldTotal()">
+                        </div>
+                        <div class="form-group" style="flex: 1; min-width: 120px; margin-bottom: 0;">
+                            <label for="goal-action-price-gram">Harga per Gram</label>
+                            <input type="text" id="goal-action-price-gram" placeholder="Harga/gr..." oninput="formatInputCurrency(this); calculateGoldTotal()">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label id="goal-action-label" for="goal-action-amount">Nominal Uang</label>
+                    <input type="text" id="goal-action-amount" placeholder="Nominal..." required oninput="formatInputCurrency(this)">
+                </div>
+                <div class="form-group">
+                    <label for="goal-action-date">Tanggal Transaksi</label>
+                    <input type="date" id="goal-action-date" required>
+                </div>
+                <div class="form-group">
+                    <label for="goal-action-note">Keterangan / Catatan</label>
+                    <input type="text" id="goal-action-note" placeholder="Misal: Setoran bulan Juli, penarikan arisan...">
+                </div>
+                
+                <!-- Bukti Transfer Upload -->
+                <div class="form-group">
+                    <label>Bukti Transfer (Opsional)</label>
+                    <input type="file" id="goal-action-proof" accept="image/*" onchange="previewProofImage(event)" style="display: none;">
+                    <div class="file-upload-trigger" onclick="document.getElementById('goal-action-proof').click()" style="background-color: var(--bg-tertiary); border: 1px dashed var(--border-color); border-radius: 10px; padding: 0.75rem; text-align: center; cursor: pointer; color: var(--text-muted); font-size: 0.85rem; display: flex; align-items: center; justify-content: center; gap: 0.5rem; border-color: rgba(255,255,255,0.1);">
+                        <i class="fa-solid fa-camera"></i> <span id="proof-upload-status">Pilih Foto Bukti</span>
+                    </div>
+                    <div class="proof-photo-preview-container" style="display: none; margin-top: 0.5rem; text-align: center; position: relative;">
+                        <img id="proof-photo-preview" src="" style="max-height: 120px; border-radius: 8px; border: 1px solid var(--border-color); box-shadow: 0 4px 6px rgba(0,0,0,0.3);">
+                        <div style="margin-top: 0.25rem;">
+                            <button type="button" class="btn btn-danger btn-xs" onclick="removeProofPhoto()" style="padding: 0.15rem 0.5rem; font-size: 0.7rem;"><i class="fa-solid fa-times"></i> Hapus</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('goalActionModal')">Batal</button>
+                    <button type="submit" class="btn btn-primary" id="goal-action-submit-btn">Proses Alokasi</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: RIWAYAT MUTASI POS DANA -->
+    <div id="goalHistoryModal" class="modal">
+        <div class="modal-content" style="max-width: 550px;">
+            <div class="modal-header">
+                <h2 id="goal-history-title">Riwayat Mutasi Dana</h2>
+                <span class="close-btn" onclick="closeModal('goalHistoryModal')">&times;</span>
+            </div>
+            <div class="modal-body" style="max-height: 400px; overflow-y: auto; padding: 0.5rem 0;">
+                <div class="table-responsive">
+                    <table class="data-table" style="font-size: 0.85rem;">
+                        <thead>
+                            <tr>
+                                <th>Tanggal</th>
+                                <th>Tipe</th>
+                                <th>Jumlah</th>
+                                <th>Bukti</th>
+                                <th>Catatan</th>
+                            </tr>
+                        </thead>
+                        <tbody id="goal-history-table-body">
+                            <!-- JS populated -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer" style="margin-top: 1rem;">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('goalHistoryModal')">Tutup</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: PREVIEW BUKTI TRANSFER -->
+    <div id="proofViewModal" class="modal" style="z-index: 25000;">
+        <div class="modal-content" style="max-width: 420px; text-align: center;">
+            <div class="modal-header">
+                <h2>Bukti Transfer</h2>
+                <span class="close-btn" onclick="closeModal('proofViewModal')">&times;</span>
+            </div>
+            <div class="modal-body" style="padding: 1rem 0;">
+                <img id="proof-view-img" src="" style="max-width: 100%; max-height: 450px; border-radius: 8px; border: 1px solid var(--border-color); box-shadow: 0 4px 10px rgba(0,0,0,0.5);">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('proofViewModal')">Tutup</button>
+            </div>
+        </div>
+    </div>
+
     <!-- BOTTOM NAVIGATION FOR MOBILE DEVICES -->
     <div class="bottom-nav">
         <a href="#" class="bottom-nav-item active" data-target="dashboard-section">
@@ -676,9 +896,9 @@
             <i class="fa-solid fa-money-bill-transfer"></i>
             <span>Arus Kas</span>
         </a>
-        <a href="#" class="bottom-nav-item" data-target="loans-section">
-            <i class="fa-solid fa-hand-holding-dollar"></i>
-            <span>Pinjaman</span>
+        <a href="#" class="bottom-nav-item" data-target="goals-section">
+            <i class="fa-solid fa-piggy-bank"></i>
+            <span>Pos Dana</span>
         </a>
         <a href="#" class="bottom-nav-item" data-target="travel-section">
             <i class="fa-solid fa-suitcase-rolling"></i>

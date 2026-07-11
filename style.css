@@ -1558,3 +1558,208 @@ body {
     }
 }
 
+/* ==========================================
+   POS KEUANGAN (SAVING GOALS) STYLING
+   ========================================== */
+.goals-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(285px, 1fr));
+    gap: 1.5rem;
+    margin-top: 1.5rem;
+}
+
+.goal-card {
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 20px;
+    padding: 1.5rem;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
+    transition: var(--transition-smooth);
+    overflow: hidden;
+}
+
+.goal-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.65), 0 0 15px rgba(0, 200, 255, 0.15);
+    border-color: rgba(0, 200, 255, 0.35);
+}
+
+.goal-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+    margin-bottom: 1.25rem;
+}
+
+.goal-card-title {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #ffffff;
+    margin-bottom: 0.35rem;
+    line-height: 1.35;
+}
+
+.goal-card-category {
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    padding: 0.2rem 0.5rem;
+    border-radius: 6px;
+    width: fit-content;
+}
+
+/* Category Theme Colors */
+.category-tabungan { background-color: rgba(0, 200, 255, 0.15); color: #00c8ff; }
+.category-emergency { background-color: rgba(255, 51, 51, 0.15); color: #ff3333; }
+.category-investasi { background-color: rgba(46, 204, 113, 0.15); color: #2ecc71; }
+.category-hiburan { background-color: rgba(241, 196, 15, 0.15); color: #f1c40f; }
+.category-kebutuhan { background-color: rgba(155, 89, 182, 0.15); color: #9b59b6; }
+.category-emas { background-color: rgba(212, 175, 55, 0.15); color: #d4af37; }
+
+.goal-card-icon {
+    font-size: 1.4rem;
+    width: 42px;
+    height: 42px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+/* Goal Progress Bar */
+.goal-progress-container {
+    margin: 1.25rem 0;
+}
+
+.goal-progress-info {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    margin-bottom: 0.5rem;
+}
+
+.goal-progress-bar-bg {
+    height: 10px;
+    background-color: var(--bg-tertiary);
+    border-radius: 5px;
+    overflow: hidden;
+    position: relative;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.goal-progress-bar-fill {
+    height: 100%;
+    border-radius: 5px;
+    width: 0%;
+    transition: width 0.8s cubic-bezier(0.1, 0.8, 0.1, 1);
+}
+
+/* Glow effects per theme */
+.glow-blue {
+    background: linear-gradient(90deg, #0099ff, #00c8ff);
+    box-shadow: 0 0 10px rgba(0, 200, 255, 0.5);
+}
+.glow-green {
+    background: linear-gradient(90deg, #27ae60, #2ecc71);
+    box-shadow: 0 0 10px rgba(46, 204, 113, 0.5);
+}
+.glow-red {
+    background: linear-gradient(90deg, #c0392b, #e74c3c);
+    box-shadow: 0 0 10px rgba(231, 76, 60, 0.5);
+}
+.glow-yellow {
+    background: linear-gradient(90deg, #d35400, #f39c12);
+    box-shadow: 0 0 10px rgba(243, 156, 18, 0.5);
+}
+.glow-purple {
+    background: linear-gradient(90deg, #8e44ad, #9b59b6);
+    box-shadow: 0 0 10px rgba(155, 89, 182, 0.5);
+}
+.glow-gold {
+    background: linear-gradient(90deg, #b8860b, #d4af37);
+    box-shadow: 0 0 10px rgba(212, 175, 55, 0.5);
+}
+
+/* Button Mutation Actions */
+.goal-card-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 1rem;
+}
+
+.goal-btn {
+    flex: 1;
+    padding: 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.3rem;
+    transition: var(--transition-smooth);
+    border: 1px solid transparent;
+}
+
+.goal-btn-deposit {
+    background-color: rgba(46, 204, 113, 0.12);
+    color: #2ecc71;
+    border-color: rgba(46, 204, 113, 0.2);
+}
+
+.goal-btn-deposit:hover {
+    background-color: #2ecc71;
+    color: #ffffff;
+    box-shadow: 0 4px 12px rgba(46, 204, 113, 0.35);
+}
+
+.goal-btn-withdraw {
+    background-color: rgba(241, 196, 15, 0.12);
+    color: #f1c40f;
+    border-color: rgba(241, 196, 15, 0.2);
+}
+
+.goal-btn-withdraw:hover {
+    background-color: #f1c40f;
+    color: #ffffff;
+    box-shadow: 0 4px 12px rgba(241, 196, 15, 0.35);
+}
+
+.goal-btn-history {
+    background-color: rgba(255, 255, 255, 0.05);
+    color: var(--text-secondary);
+    border-color: var(--border-color);
+    flex: 0 0 38px;
+    width: 38px;
+}
+
+.goal-btn-history:hover {
+    background-color: var(--text-secondary);
+    color: var(--bg-primary);
+    border-color: var(--text-secondary);
+}
+
+.goal-btn-danger {
+    background-color: rgba(255, 51, 51, 0.12);
+    color: #ff3333;
+    border-color: rgba(255, 51, 51, 0.2);
+    flex: 0 0 38px;
+    width: 38px;
+}
+
+.goal-btn-danger:hover {
+    background-color: #ff3333;
+    color: #ffffff;
+    box-shadow: 0 4px 12px rgba(255, 51, 51, 0.35);
+}
+
