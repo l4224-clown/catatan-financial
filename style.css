@@ -43,14 +43,11 @@
 body {
     font-family: var(--font-main);
     background-color: var(--bg-primary);
-    
-    /* Naruto wallpaper as dashboard background (tampilan dalam) */
-    background-image: linear-gradient(rgba(10, 9, 8, 0.88), rgba(10, 9, 8, 0.94)), url('naruto.jpg');
+    background-image: linear-gradient(rgba(10, 9, 8, 0.85), rgba(10, 9, 8, 0.92)), url('naruto.jpg');
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
     background-attachment: fixed;
-    
     color: var(--text-primary);
     min-height: 100vh;
     overflow-x: hidden;
@@ -310,10 +307,10 @@ body {
     background-color: var(--bg-secondary);
     border: 1px solid var(--border-color);
     border-radius: 16px;
-    padding: 1.5rem;
+    padding: 1.15rem 1.35rem;
     display: flex;
     align-items: center;
-    gap: 1.25rem;
+    gap: 1rem;
     box-shadow: var(--glass-shadow);
     transition: var(--transition-smooth);
     position: relative;
@@ -332,34 +329,34 @@ body {
 }
 
 .summary-card:hover {
-    transform: translateY(-4px);
+    transform: translateY(-3px);
     border-color: rgba(255, 69, 0, 0.4);
-    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5), 0 0 10px rgba(255, 69, 0, 0.1);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4), 0 0 8px rgba(255, 69, 0, 0.1);
 }
 
 .card-icon {
-    width: 52px;
-    height: 52px;
-    border-radius: 12px;
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.4rem;
+    font-size: 1.15rem;
 }
 
 .card-info h3 {
-    font-size: 0.85rem;
+    font-size: 0.72rem;
     color: var(--text-secondary);
-    font-weight: 600;
-    margin-bottom: 0.25rem;
+    font-weight: 700;
+    margin-bottom: 0.15rem;
     text-transform: uppercase;
     letter-spacing: 0.5px;
 }
 
 .card-info .amount {
-    font-size: 1.5rem;
-    font-weight: 700;
-    letter-spacing: -0.5px;
+    font-size: 1.25rem;
+    font-weight: 800;
+    letter-spacing: -0.3px;
     color: #ffffff;
 }
 
@@ -1763,3 +1760,529 @@ body {
     box-shadow: 0 4px 12px rgba(255, 51, 51, 0.35);
 }
 
+/* ==========================================
+   SIDEBAR NAV GROUP LABELS
+   ========================================== */
+.nav-group-label {
+    font-size: 0.6rem;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--text-muted);
+    padding: 1.25rem 1.75rem 0.4rem;
+    font-weight: 800;
+    opacity: 0.5;
+    user-select: none;
+    pointer-events: none;
+}
+
+.nav-group-label:first-child {
+    padding-top: 0.5rem;
+}
+
+/* ==========================================
+   ARCHIVES SECTION
+   ========================================== */
+
+/* Current Month Card */
+.archive-current-month-card {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 20px;
+    padding: 0;
+    overflow: hidden;
+    position: relative;
+}
+
+.archive-current-month-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, var(--accent-orange), var(--accent-red), var(--accent-orange));
+    background-size: 200% 100%;
+    animation: shimmerBar 3s ease-in-out infinite;
+}
+
+@keyframes shimmerBar {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+}
+
+.archive-current-month-inner {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    padding: 1.75rem 2rem;
+    flex-wrap: wrap;
+}
+
+.archive-month-icon {
+    width: 56px;
+    height: 56px;
+    border-radius: 16px;
+    background: linear-gradient(135deg, var(--accent-orange), var(--accent-red));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    color: #ffffff;
+    flex-shrink: 0;
+    box-shadow: 0 4px 15px rgba(255, 107, 0, 0.3);
+}
+
+.archive-month-info {
+    flex: 1;
+    min-width: 140px;
+}
+
+.archive-month-label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
+    font-weight: 700;
+    margin-bottom: 0.25rem;
+}
+
+.archive-month-name {
+    font-size: 1.6rem;
+    font-weight: 800;
+    color: #ffffff;
+    letter-spacing: -0.5px;
+}
+
+.archive-month-stats {
+    display: flex;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+}
+
+.archive-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+}
+
+.archive-stat-label {
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
+    font-weight: 700;
+}
+
+.archive-stat-value {
+    font-size: 1rem;
+    font-weight: 800;
+    color: #ffffff;
+}
+
+.archive-stat-value.income {
+    color: var(--accent-green);
+}
+
+.archive-stat-value.expense {
+    color: var(--accent-red);
+}
+
+.archive-actions-row {
+    padding: 1rem 2rem 1.25rem;
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+}
+
+/* Archives Grid */
+.archives-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1.25rem;
+}
+
+/* Individual Archive Card */
+.archive-card {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    padding: 1.5rem;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+}
+
+.archive-card::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--accent-orange), var(--accent-red));
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.archive-card:hover {
+    transform: translateY(-4px);
+    border-color: var(--accent-orange);
+    box-shadow: 0 8px 30px rgba(255, 107, 0, 0.15);
+}
+
+.archive-card:hover::after {
+    opacity: 1;
+}
+
+.archive-card-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1.25rem;
+}
+
+.archive-card-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    background: rgba(255, 107, 0, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+    color: var(--accent-orange);
+    flex-shrink: 0;
+}
+
+.archive-card-title {
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: #ffffff;
+    margin: 0;
+}
+
+.archive-card-date {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    font-weight: 600;
+}
+
+.archive-card-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+}
+
+.archive-card-stat {
+    background: var(--bg-tertiary);
+    border-radius: 10px;
+    padding: 0.65rem 0.85rem;
+}
+
+.archive-card-stat-label {
+    font-size: 0.6rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
+    font-weight: 700;
+    margin-bottom: 0.2rem;
+}
+
+.archive-card-stat-value {
+    font-size: 0.85rem;
+    font-weight: 800;
+    color: #ffffff;
+}
+
+.archive-card-stat-value.positive {
+    color: var(--accent-green);
+}
+
+.archive-card-stat-value.negative {
+    color: var(--accent-red);
+}
+
+.archive-card-footer {
+    margin-top: 1rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.archive-card-tx-count {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    font-weight: 600;
+}
+
+.archive-card-view-btn {
+    font-size: 0.72rem;
+    color: var(--accent-orange);
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+}
+
+/* Archive Detail Modal Summary */
+.archive-detail-summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1rem;
+}
+
+.archive-detail-stat {
+    background: var(--bg-tertiary);
+    border-radius: 12px;
+    padding: 1rem 1.25rem;
+    border: 1px solid var(--border-color);
+}
+
+.archive-detail-stat-label {
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
+    font-weight: 700;
+    margin-bottom: 0.35rem;
+}
+
+.archive-detail-stat-value {
+    font-size: 1.15rem;
+    font-weight: 800;
+}
+
+.archive-detail-stat-value.income-val {
+    color: var(--accent-green);
+}
+
+.archive-detail-stat-value.expense-val {
+    color: var(--accent-red);
+}
+
+.archive-detail-stat-value.net-val {
+    color: var(--accent-orange);
+}
+
+/* Auto Archive Notification */
+.archive-notification {
+    position: fixed;
+    top: 1.5rem;
+    right: 1.5rem;
+    background: linear-gradient(135deg, var(--bg-secondary), var(--bg-tertiary));
+    border: 1px solid var(--accent-orange);
+    border-radius: 16px;
+    padding: 1.25rem 1.75rem;
+    z-index: 30000;
+    box-shadow: 0 8px 32px rgba(255, 107, 0, 0.25);
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    max-width: 380px;
+    animation: slideInRight 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes slideInRight {
+    from {
+        opacity: 0;
+        transform: translateX(100px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+.archive-notification-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, var(--accent-orange), var(--accent-red));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+    color: #ffffff;
+    flex-shrink: 0;
+}
+
+.archive-notification-text {
+    font-size: 0.82rem;
+    color: #ffffff;
+    font-weight: 600;
+    line-height: 1.4;
+}
+
+.archive-notification-text strong {
+    color: var(--accent-orange);
+}
+
+/* Responsive Archives */
+@media (max-width: 768px) {
+    .archive-current-month-inner {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+        padding: 1.25rem 1.5rem;
+    }
+
+    .archive-month-stats {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    .archive-month-name {
+        font-size: 1.3rem;
+    }
+
+    .archives-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .archive-actions-row {
+        padding: 0.75rem 1.5rem 1rem;
+    }
+
+    .archive-detail-summary {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .archive-notification {
+        top: auto;
+        bottom: 5.5rem;
+        right: 1rem;
+        left: 1rem;
+        max-width: none;
+    }
+}
+
+@media (max-width: 576px) {
+    .archive-month-stats {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .archive-stat {
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .archive-detail-summary {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ==========================================
+   MOBILE MENU DRAWER
+   ========================================== */
+.mobile-menu-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: rgba(10, 9, 8, 0.7);
+    backdrop-filter: blur(6px);
+    z-index: 29000;
+    display: none;
+}
+
+.mobile-menu-drawer {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    background: linear-gradient(135deg, var(--bg-secondary), var(--bg-tertiary));
+    border-top: 1px solid var(--border-color);
+    border-radius: 24px 24px 0 0;
+    padding: 1.5rem;
+    transform: translateY(100%);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.5);
+}
+
+.mobile-menu-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.25rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.mobile-menu-header h3 {
+    font-size: 1.1rem;
+    color: #ffffff;
+    font-weight: 800;
+}
+
+.mobile-menu-close {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    font-size: 1.5rem;
+    cursor: pointer;
+    padding: 0.25rem;
+}
+
+.mobile-menu-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.mobile-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.85rem 1.25rem;
+    border-radius: 12px;
+    color: var(--text-primary);
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 0.9rem;
+    transition: all 0.2s ease;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.02);
+}
+
+.mobile-menu-item i {
+    font-size: 1.1rem;
+    color: var(--accent-orange);
+    width: 24px;
+    text-align: center;
+}
+
+.mobile-menu-item:hover, .mobile-menu-item:active {
+    background: rgba(255, 107, 0, 0.1);
+    color: var(--accent-orange);
+    border-color: rgba(255, 107, 0, 0.2);
+}
+
+.mobile-menu-item.logout-item i {
+    color: var(--color-danger);
+}
+
+.mobile-menu-item.logout-item:hover, .mobile-menu-item.logout-item:active {
+    background: rgba(255, 51, 51, 0.1);
+    color: var(--color-danger);
+    border-color: rgba(255, 51, 51, 0.2);
+}
+
+/* ==========================================
+   50/30/20 BUDGETING INTERACTIVE INPUT
+   ========================================== */
+#planned-salary-input {
+    border-bottom: 1px dashed rgba(255, 107, 0, 0.4) !important;
+    transition: all 0.3s ease;
+}
+#planned-salary-input:focus {
+    color: var(--accent-orange) !important;
+    border-bottom: 1px solid var(--accent-orange) !important;
+    text-shadow: 0 0 8px rgba(255, 107, 0, 0.5);
+}

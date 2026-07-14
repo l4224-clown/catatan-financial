@@ -1,0 +1,26 @@
+[39488:20176:0714/131547.331:WARNING:chrome\browser\extensions\activity_log\activity_log_policy.cc:71] Scheduling init
+[39488:20176:0714/131547.332:WARNING:chrome\browser\extensions\activity_log\activity_log_policy.cc:71] Scheduling init
+[39488:20176:0714/131547.495:WARNING:chrome\browser\extensions\external_registry_loader_win.cc:283] Error observing HKLM: 5
+[18808:1756:0714/131547.507:ERROR:ui\gl\direct_composition_support.cc:247] GetGpuDriverOverlayInfo: Failed to retrieve video device
+[18808:1756:0714/131547.513:VERBOSE1:components\viz\service\main\viz_main_impl.cc:87] VizNullHypothesis is disabled (not a warning)
+[2356:20424:0714/131547.663:INFO:third_party\webrtc\rtc_base\cpu_info.cc:77] Available number of cores: 16
+[39488:20176:0714/131547.705:INFO:CONSOLE:0] "Tracking Prevention blocked access to storage for https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css.", source: file:///C:/Users/hp/Documents/catatan-financial/index.html (0)
+[39488:20176:0714/131547.705:INFO:CONSOLE:0] "Tracking Prevention blocked access to storage for https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css.", source: file:///C:/Users/hp/Documents/catatan-financial/index.html (0)
+[39488:20176:0714/131547.705:INFO:CONSOLE:0] "Tracking Prevention blocked access to storage for https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css.", source: file:///C:/Users/hp/Documents/catatan-financial/index.html (0)
+[39488:20176:0714/131547.705:INFO:CONSOLE:0] "Tracking Prevention blocked access to storage for https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css.", source: file:///C:/Users/hp/Documents/catatan-financial/index.html (0)
+[39488:20176:0714/131547.705:INFO:CONSOLE:0] "Tracking Prevention blocked access to storage for https://cdn.jsdelivr.net/npm/chart.js.", source: file:///C:/Users/hp/Documents/catatan-financial/index.html (0)
+[39488:20176:0714/131547.705:INFO:CONSOLE:0] "Tracking Prevention blocked access to storage for https://cdn.jsdelivr.net/npm/chart.js.", source: file:///C:/Users/hp/Documents/catatan-financial/index.html (0)
+[39488:20176:0714/131547.706:INFO:CONSOLE:0] "Tracking Prevention blocked access to storage for https://cdn.jsdelivr.net/npm/chart.js.", source: file:///C:/Users/hp/Documents/catatan-financial/index.html (0)
+[39488:20176:0714/131547.706:INFO:CONSOLE:0] "Tracking Prevention blocked access to storage for https://cdn.jsdelivr.net/npm/chart.js.", source: file:///C:/Users/hp/Documents/catatan-financial/index.html (0)
+[26580:25288:0714/131547.732:INFO:third_party\webrtc\rtc_base\cpu_info.cc:77] Available number of cores: 16
+[11200:35088:0714/131547.809:INFO:third_party\webrtc\rtc_base\cpu_info.cc:77] Available number of cores: 16
+[8180:20276:0714/131547.924:INFO:third_party\webrtc\rtc_base\cpu_info.cc:77] Available number of cores: 16
+[8160:10016:0714/131547.969:INFO:third_party\webrtc\rtc_base\cpu_info.cc:77] Available number of cores: 16
+[6592:30556:0714/131548.068:INFO:third_party\webrtc\rtc_base\cpu_info.cc:77] Available number of cores: 16
+[16100:39716:0714/131548.134:INFO:third_party\webrtc\rtc_base\cpu_info.cc:77] Available number of cores: 16
+[30224:20968:0714/131548.176:INFO:third_party\webrtc\rtc_base\cpu_info.cc:77] Available number of cores: 16
+[2516:35196:0714/131548.253:INFO:third_party\webrtc\rtc_base\cpu_info.cc:77] Available number of cores: 16
+[37728:37776:0714/131548.450:INFO:third_party\webrtc\rtc_base\cpu_info.cc:77] Available number of cores: 16
+[620:38668:0714/131548.638:INFO:third_party\webrtc\rtc_base\cpu_info.cc:77] Available number of cores: 16
+[26676:21456:0714/131548.842:INFO:third_party\webrtc\rtc_base\cpu_info.cc:77] Available number of cores: 16
+[39488:20176:0714/131549.096:INFO:CONSOLE:4335] "[ProtocolLaunch] handler constructed; wiring port events.", source: chrome-extension://ndcpkimcihhghdcddljkfmmjccdmcmof/background.rollup.js (4335)

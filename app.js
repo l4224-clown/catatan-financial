@@ -1,36 +1,13 @@
 /* ==========================================
-   GLOBAL ERROR CATCHER (FOR DEBUGGING)
+   GLOBAL ERROR CATCHER (LOG ONLY)
    ========================================== */
 window.onerror = function(message, source, lineno, colno, error) {
-    showVisualError("Uncaught Error: " + message + " at line " + lineno + " (col " + colno + ")");
+    console.error("Uncaught Error: " + message + " at line " + lineno + " (col " + colno + ")");
     return false;
 };
 window.onunhandledrejection = function(event) {
-    showVisualError("Unhandled Promise Rejection: " + event.reason);
+    console.error("Unhandled Promise Rejection: " + event.reason);
 };
-
-function showVisualError(errText) {
-    let errDiv = document.getElementById('visual-error-banner');
-    if (!errDiv) {
-        errDiv = document.createElement('div');
-        errDiv.id = 'visual-error-banner';
-        errDiv.style.position = 'fixed';
-        errDiv.style.top = '0';
-        errDiv.style.left = '0';
-        errDiv.style.width = '100%';
-        errDiv.style.backgroundColor = '#ff3333';
-        errDiv.style.color = '#ffffff';
-        errDiv.style.padding = '12px 20px';
-        errDiv.style.zIndex = '999999';
-        errDiv.style.fontFamily = 'monospace';
-        errDiv.style.fontSize = '13px';
-        errDiv.style.whiteSpace = 'pre-wrap';
-        errDiv.style.boxShadow = '0 6px 15px rgba(0,0,0,0.6)';
-        errDiv.style.borderBottom = '2px solid #ffcc00';
-        document.body.appendChild(errDiv);
-    }
-    errDiv.textContent += errText + "\n";
-}
 
 /* ==========================================
    APP STATE & INITIAL DATA
@@ -40,7 +17,8 @@ let state = {
     loans: [],
     travels: [],
     notes: [],
-    goals: []
+    goals: [],
+    archives: []
 };
 
 const categories = {
@@ -96,6 +74,7 @@ function checkAuthStatus() {
         if (loginContainer) loginContainer.style.display = 'none';
         if (appWrapper) appWrapper.style.display = 'block';
         loadDataFromLocalStorage();
+        checkAndAutoArchive();
         updateDashboardUI();
     } else {
         if (loginContainer) loginContainer.style.display = 'flex';
@@ -253,6 +232,19 @@ async function syncToGoogleSheets() {
             JSON.stringify(g.history)
         ]);
 
+        const archivesData = state.archives.map(a => [
+            a.id,
+            a.month,
+            a.year,
+            a.label,
+            a.archivedAt,
+            a.summary.totalIncome,
+            a.summary.totalExpense,
+            a.summary.netBalance,
+            a.summary.transactionCount,
+            JSON.stringify(a.transactions)
+        ]);
+
         await fetch(API_URL, {
             method: 'POST',
             mode: 'no-cors',
@@ -305,6 +297,17 @@ async function syncToGoogleSheets() {
                 action: 'saveAll',
                 sheet: 'PosDana',
                 data: goalsData
+            })
+        });
+
+        await fetch(API_URL, {
+            method: 'POST',
+            mode: 'no-cors',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                action: 'saveAll',
+                sheet: 'Arsip',
+                data: archivesData
             })
         });
 
@@ -431,12 +434,38 @@ async function loadFromGoogleSheets() {
         errorsCount++;
     }
 
+    // 6. Arsip Bulanan (Monthly Archives)
+    try {
+        const responseArch = await fetch(`${API_URL}?sheet=Arsip`);
+        const jsonArch = await responseArch.json();
+        if (jsonArch.status === 'success' && jsonArch.data) {
+            state.archives = jsonArch.data.map(row => ({
+                id: row[0],
+                month: parseInt(row[1]) || 1,
+                year: parseInt(row[2]) || 2026,
+                label: row[3],
+                archivedAt: row[4] || new Date().toISOString(),
+                summary: {
+                    totalIncome: parseFloat(row[5]) || 0,
+                    totalExpense: parseFloat(row[6]) || 0,
+                    netBalance: parseFloat(row[7]) || 0,
+                    transactionCount: parseInt(row[8]) || 0
+                },
+                transactions: row[9] ? JSON.parse(row[9]) : []
+            }));
+            localStorage.setItem('fina_archives', JSON.stringify(state.archives));
+        }
+    } catch (e) {
+        console.error("Gagal memuat sheet Arsip:", e);
+        errorsCount++;
+    }
+
     isSyncing = false;
-    if (errorsCount === 5) {
+    if (errorsCount === 6) {
         showSyncStatus("Gagal sinkron online, memuat data lokal", true);
         updateDashboardUI();
     } else if (errorsCount > 0) {
-        showSyncStatus(`Sinkron sebagian (${5 - errorsCount}/5 sukses)`, false);
+        showSyncStatus(`Sinkron sebagian (${6 - errorsCount}/6 sukses)`, false);
         updateDashboardUI();
     } else {
         showSyncStatus("Data sinkron dengan Google Sheets!");
@@ -496,6 +525,14 @@ function loadDataFromLocalStorage() {
         state.goals = [];
     }
 
+    const savedArchives = localStorage.getItem('fina_archives');
+    try {
+        if (savedArchives) state.archives = JSON.parse(savedArchives);
+    } catch(e) {
+        console.error("Gagal membaca arsip lokal:", e);
+        state.archives = [];
+    }
+
     loadFromGoogleSheets();
 }
 
@@ -505,6 +542,7 @@ function saveDataToLocalStorage() {
     localStorage.setItem('fina_travels', JSON.stringify(state.travels));
     localStorage.setItem('fina_notes', JSON.stringify(state.notes));
     localStorage.setItem('fina_goals', JSON.stringify(state.goals));
+    localStorage.setItem('fina_archives', JSON.stringify(state.archives));
     syncToGoogleSheets();
 }
 
@@ -566,6 +604,8 @@ function switchSection(sectionId) {
         renderNotes();
     } else if (sectionId === 'goals-section') {
         renderGoals();
+    } else if (sectionId === 'archives-section') {
+        renderArchives();
     }
 }
 
@@ -737,6 +777,7 @@ function calculateFinancials(currencyCode) {
     let incomeSum = 0;
     let expenseSum = 0;
     
+    // Hitung transaksi aktif
     state.transactions.forEach(t => {
         const tCurr = t.currency || 'IDR';
         if (tCurr === currencyCode) {
@@ -744,6 +785,21 @@ function calculateFinancials(currencyCode) {
             else if (t.type === 'keluar') expenseSum += t.amount;
         }
     });
+
+    // Hitung transaksi dari arsip bulanan (agar saldo total tetap akurat)
+    if (state.archives && state.archives.length > 0) {
+        state.archives.forEach(archive => {
+            if (archive.transactions) {
+                archive.transactions.forEach(t => {
+                    const tCurr = t.currency || 'IDR';
+                    if (tCurr === currencyCode) {
+                        if (t.type === 'masuk') incomeSum += t.amount;
+                        else if (t.type === 'keluar') expenseSum += t.amount;
+                    }
+                });
+            }
+        });
+    }
 
     let activeLoans = 0;
     state.loans.forEach(loan => {
@@ -806,14 +862,51 @@ function changeDashboardCurrency(currencyCode) {
     updateDashboardUI();
 }
 
+function updateVisibilityButtonUI(isHidden) {
+    const btn = document.getElementById('btn-toggle-visibility');
+    if (!btn) return;
+    
+    const icon = btn.querySelector('i');
+    const textSpan = document.getElementById('toggle-visibility-text');
+    
+    if (isHidden) {
+        if (icon) {
+            icon.className = 'fa-solid fa-eye';
+        }
+        if (textSpan) {
+            textSpan.textContent = 'Tampilkan Detail';
+        }
+    } else {
+        if (icon) {
+            icon.className = 'fa-solid fa-eye-slash';
+        }
+        if (textSpan) {
+            textSpan.textContent = 'Sensor Detail';
+        }
+    }
+}
+
+function toggleNominalVisibility() {
+    const isCurrentlyHidden = localStorage.getItem('fina_hide_details') !== 'false';
+    const newHiddenState = !isCurrentlyHidden;
+    localStorage.setItem('fina_hide_details', newHiddenState ? 'true' : 'false');
+    
+    updateVisibilityButtonUI(newHiddenState);
+    updateDashboardUI();
+}
+
 function updateDashboardUI() {
     const fin = calculateFinancials(activeCurrency);
+    const isHidden = localStorage.getItem('fina_hide_details') !== 'false'; // Default to true (hidden) if not set
+    
+    updateVisibilityButtonUI(isHidden);
+    const maskText = '••••••';
     
     document.getElementById('total-balance').textContent = formatCurrency(fin.balance, activeCurrency);
-    document.getElementById('total-income').textContent = formatCurrency(fin.income, activeCurrency);
-    document.getElementById('total-expense').textContent = formatCurrency(fin.expense, activeCurrency);
-    document.getElementById('total-loans').textContent = formatCurrency(fin.loans, activeCurrency);
-    document.getElementById('total-savings').textContent = formatCurrency(fin.savings, activeCurrency);
+    document.getElementById('total-income').textContent = isHidden ? maskText : formatCurrency(fin.income, activeCurrency);
+    document.getElementById('total-expense').textContent = isHidden ? maskText : formatCurrency(fin.expense, activeCurrency);
+    document.getElementById('total-loans').textContent = isHidden ? maskText : formatCurrency(fin.loans, activeCurrency);
+    document.getElementById('total-savings').textContent = isHidden ? maskText : formatCurrency(fin.savings, activeCurrency);
 
     const balEl = document.getElementById('total-balance');
     if (fin.balance < 0) {
@@ -822,6 +915,44 @@ function updateDashboardUI() {
         balEl.style.color = 'var(--text-primary)';
     }
 
+    // Hitung performa kas bulan berjalan
+    const now = new Date();
+    const thisMonth = now.getMonth() + 1;
+    const thisYear = now.getFullYear();
+    let thisMonthIncome = 0;
+    let thisMonthExpense = 0;
+    
+    state.transactions.forEach(t => {
+        const tCurr = t.currency || 'IDR';
+        if (tCurr === activeCurrency && t.date) {
+            const d = new Date(t.date);
+            if (d.getMonth() + 1 === thisMonth && d.getFullYear() === thisYear) {
+                if (t.type === 'masuk') thisMonthIncome += t.amount;
+                else if (t.type === 'keluar') thisMonthExpense += t.amount;
+            }
+        }
+    });
+    
+    const monthlyNet = thisMonthIncome - thisMonthExpense;
+    const netPrefix = monthlyNet > 0 ? '+' : '';
+    const compEl = document.getElementById('monthly-comparison-status');
+    if (compEl) {
+        if (isHidden) {
+            compEl.textContent = maskText;
+            compEl.style.color = '#ffffff';
+        } else {
+            compEl.textContent = `${netPrefix}${formatCurrency(monthlyNet, activeCurrency)}`;
+            if (monthlyNet > 0) {
+                compEl.style.color = 'var(--accent-green)';
+            } else if (monthlyNet < 0) {
+                compEl.style.color = 'var(--accent-red)';
+            } else {
+                compEl.style.color = '#ffffff';
+            }
+        }
+    }
+
+    renderBudgetingUI(isHidden, maskText);
     renderRecentTransactions();
     renderRecentLoans();
     renderCharts();
@@ -1372,6 +1503,10 @@ function deleteLoan(id) {
     });
 }
 
+function filterLoans() {
+    renderLoanTable();
+}
+
 function renderLoanTable() {
     const tbody = document.getElementById('loan-table-body');
     if (!tbody) return;
@@ -1419,7 +1554,7 @@ function renderLoanTable() {
 
         tr.innerHTML = `
             <td data-label="Tanggal">${formatDateStr(l.date)}</td>
-            <td data-label="Pihak / Nama"><strong>${l.name}</strong><br><small style="color:var(--text-muted);">${l.note}</small></td>
+            <td data-label="Pihak / Nama"><strong>${l.name}</strong>${l.note ? `<br><small style="color:var(--text-muted);">${l.note}</small>` : ''}</td>
             <td data-label="Mata Uang"><strong>${lCurr}</strong></td>
             <td data-label="Tipe">${typeStr}</td>
             <td data-label="Pinjaman Pokok">${formatCurrency(l.amount, lCurr)}</td>
@@ -2022,7 +2157,7 @@ function renderGoals() {
 
     // Handling jika kosong
     if (filtered.length === 0) {
-        container.innerHTML = `<div class="empty-list" style="grid-column: 1/-1; text-align: center; padding: 3rem; color: var(--text-muted);">Belum ada pos keuangan terdaftar untuk mata uang ${activeCurrency}.</div>`;
+        container.innerHTML = '<div class="empty-list" style="grid-column: 1/-1; text-align: center; padding: 3rem; color: var(--text-muted);">Belum ada pos keuangan terdaftar untuk mata uang ' + activeCurrency + '.</div>';
         return;
     }
 
@@ -2032,7 +2167,7 @@ function renderGoals() {
         card.className = 'goal-card';
 
         // Ikon dan warna per kategori
-        let icon = 'fa-solid fa-piggy-bank';
+        let icon = 'fa-solid fa-coins';
         let glowClass = 'glow-blue';
         let catText = 'Tabungan / Arisan';
 
@@ -2430,6 +2565,390 @@ function openGoalHistoryModal(goalId) {
     openModal('goalHistoryModal');
 }
 
+/* ==========================================
+   ARSIP BULANAN (MONTHLY ARCHIVES) OPERATIONS
+   ========================================== */
+const MONTH_NAMES_ID = ['', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+
+function getMonthLabel(month, year) {
+    return `${MONTH_NAMES_ID[month]} ${year}`;
+}
+
+function getCurrentMonthKey() {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function checkAndAutoArchive() {
+    const lastMonth = localStorage.getItem('fina_last_active_month');
+    const currentKey = getCurrentMonthKey();
+    
+    if (!lastMonth) {
+        // Pertama kali → set bulan aktif sekarang tanpa arsip
+        localStorage.setItem('fina_last_active_month', currentKey);
+        return;
+    }
+    
+    if (lastMonth === currentKey) return; // Masih bulan yang sama
+    
+    // Bulan berganti! Arsipkan transaksi bulan-bulan lalu yang belum terarsip
+    const [lastYear, lastMonthNum] = lastMonth.split('-').map(Number);
+    const [currYear, currMonthNum] = currentKey.split('-').map(Number);
+    
+    // Iterasi dari bulan lalu sampai bulan sebelum bulan sekarang
+    let archiveDate = new Date(lastYear, lastMonthNum - 1, 1); // bulan lalu start
+    const currentDate = new Date(currYear, currMonthNum - 1, 1); // bulan sekarang start
+    
+    let archivedMonths = [];
+    
+    while (archiveDate < currentDate) {
+        const aMonth = archiveDate.getMonth() + 1;
+        const aYear = archiveDate.getFullYear();
+        const archiveId = `archive-${aYear}-${String(aMonth).padStart(2, '0')}`;
+        
+        // Skip jika sudah ada arsip untuk bulan ini
+        if (!state.archives.find(a => a.id === archiveId)) {
+            // Filter transaksi bulan ini
+            const monthTransactions = state.transactions.filter(t => {
+                if (!t.date) return false;
+                const d = new Date(t.date);
+                return d.getMonth() + 1 === aMonth && d.getFullYear() === aYear;
+            });
+            
+            if (monthTransactions.length > 0) {
+                // Hitung summary
+                let totalIncome = 0, totalExpense = 0;
+                monthTransactions.forEach(t => {
+                    if (t.type === 'masuk') totalIncome += t.amount;
+                    else if (t.type === 'keluar') totalExpense += t.amount;
+                });
+                
+                const archive = {
+                    id: archiveId,
+                    month: aMonth,
+                    year: aYear,
+                    label: getMonthLabel(aMonth, aYear),
+                    archivedAt: new Date().toISOString(),
+                    summary: {
+                        totalIncome,
+                        totalExpense,
+                        netBalance: totalIncome - totalExpense,
+                        transactionCount: monthTransactions.length
+                    },
+                    transactions: JSON.parse(JSON.stringify(monthTransactions))
+                };
+                
+                state.archives.push(archive);
+                archivedMonths.push(archive.label);
+                
+                // Hapus transaksi bulan ini dari data aktif
+                state.transactions = state.transactions.filter(t => {
+                    if (!t.date) return true;
+                    const d = new Date(t.date);
+                    return !(d.getMonth() + 1 === aMonth && d.getFullYear() === aYear);
+                });
+            }
+        }
+        
+        // Maju ke bulan berikutnya
+        archiveDate.setMonth(archiveDate.getMonth() + 1);
+    }
+    
+    // Update bulan aktif
+    localStorage.setItem('fina_last_active_month', currentKey);
+    
+    if (archivedMonths.length > 0) {
+        saveDataToLocalStorage();
+        showArchiveNotification(archivedMonths);
+    }
+}
+
+function showArchiveNotification(monthLabels) {
+    const existing = document.querySelector('.archive-notification');
+    if (existing) existing.remove();
+    
+    const monthList = monthLabels.join(', ');
+    const notif = document.createElement('div');
+    notif.className = 'archive-notification';
+    notif.innerHTML = `
+        <div class="archive-notification-icon">
+            <i class="fa-solid fa-box-archive"></i>
+        </div>
+        <div class="archive-notification-text">
+            Arsip otomatis berhasil!<br>
+            Data <strong>${monthList}</strong> telah diarsipkan.
+        </div>
+    `;
+    
+    document.body.appendChild(notif);
+    
+    setTimeout(() => {
+        notif.style.animation = 'slideInRight 0.4s ease reverse';
+        setTimeout(() => notif.remove(), 400);
+    }, 5000);
+}
+
+function renderArchives() {
+    const container = document.getElementById('archives-grid-container');
+    if (!container) return;
+    
+    // Update current month info card
+    const now = new Date();
+    const currentMonthLabel = getMonthLabel(now.getMonth() + 1, now.getFullYear());
+    const displayEl = document.getElementById('current-month-display');
+    if (displayEl) displayEl.textContent = currentMonthLabel;
+    
+    // Hitung stats bulan ini dari transaksi aktif
+    const thisMonth = now.getMonth() + 1;
+    const thisYear = now.getFullYear();
+    let cmIncome = 0, cmExpense = 0, cmCount = 0;
+    
+    state.transactions.forEach(t => {
+        if (!t.date) return;
+        const d = new Date(t.date);
+        if (d.getMonth() + 1 === thisMonth && d.getFullYear() === thisYear) {
+            cmCount++;
+            if (t.type === 'masuk') cmIncome += t.amount;
+            else if (t.type === 'keluar') cmExpense += t.amount;
+        }
+    });
+    
+    const cmIncomeEl = document.getElementById('current-month-income');
+    const cmExpenseEl = document.getElementById('current-month-expense');
+    const cmCountEl = document.getElementById('current-month-tx-count');
+    if (cmIncomeEl) cmIncomeEl.textContent = formatCurrency(cmIncome, activeCurrency);
+    if (cmExpenseEl) cmExpenseEl.textContent = formatCurrency(cmExpense, activeCurrency);
+    if (cmCountEl) cmCountEl.textContent = cmCount;
+    
+    // Render arsip grid
+    if (!state.archives || state.archives.length === 0) {
+        container.innerHTML = `<div class="empty-list" style="grid-column: 1/-1; text-align: center; padding: 3rem; color: var(--text-muted);"><i class="fa-solid fa-box-open" style="font-size: 2rem; margin-bottom: 1rem; display: block; opacity: 0.3;"></i>Belum ada arsip bulanan. Data akan otomatis diarsipkan saat pergantian bulan.</div>`;
+        return;
+    }
+    
+    // Urutkan arsip terbaru dulu
+    const sorted = [...state.archives].sort((a, b) => {
+        if (a.year !== b.year) return b.year - a.year;
+        return b.month - a.month;
+    });
+    
+    container.innerHTML = '';
+    sorted.forEach(archive => {
+        const card = document.createElement('div');
+        card.className = 'archive-card';
+        card.onclick = () => openArchiveDetail(archive.id);
+        
+        const net = archive.summary.netBalance;
+        const netClass = net >= 0 ? 'positive' : 'negative';
+        const netPrefix = net >= 0 ? '+' : '';
+        
+        card.innerHTML = `
+            <div class="archive-card-header">
+                <div class="archive-card-icon">
+                    <i class="fa-solid fa-calendar-check"></i>
+                </div>
+                <div>
+                    <h4 class="archive-card-title">${archive.label}</h4>
+                    <div class="archive-card-date">Diarsipkan: ${formatDateStr(archive.archivedAt.split('T')[0])}</div>
+                </div>
+            </div>
+            <div class="archive-card-stats">
+                <div class="archive-card-stat">
+                    <div class="archive-card-stat-label">Pemasukan</div>
+                    <div class="archive-card-stat-value positive">${formatCurrency(archive.summary.totalIncome, activeCurrency)}</div>
+                </div>
+                <div class="archive-card-stat">
+                    <div class="archive-card-stat-label">Pengeluaran</div>
+                    <div class="archive-card-stat-value negative">${formatCurrency(archive.summary.totalExpense, activeCurrency)}</div>
+                </div>
+                <div class="archive-card-stat">
+                    <div class="archive-card-stat-label">Selisih Bersih</div>
+                    <div class="archive-card-stat-value ${netClass}">${netPrefix}${formatCurrency(Math.abs(net), activeCurrency)}</div>
+                </div>
+                <div class="archive-card-stat">
+                    <div class="archive-card-stat-label">Jumlah Transaksi</div>
+                    <div class="archive-card-stat-value">${archive.summary.transactionCount}</div>
+                </div>
+            </div>
+            <div class="archive-card-footer">
+                <div class="archive-card-tx-count"><i class="fa-solid fa-receipt" style="margin-right: 0.3rem;"></i>${archive.summary.transactionCount} transaksi tercatat</div>
+                <div class="archive-card-view-btn">Lihat Detail <i class="fa-solid fa-chevron-right"></i></div>
+            </div>
+        `;
+        container.appendChild(card);
+    });
+}
+
+function openArchiveDetail(archiveId) {
+    const archive = state.archives.find(a => a.id === archiveId);
+    if (!archive) return;
+    
+    const titleEl = document.getElementById('archive-detail-title');
+    if (titleEl) titleEl.textContent = `Arsip: ${archive.label}`;
+    
+    // Render summary stats
+    const summaryEl = document.getElementById('archive-detail-summary');
+    if (summaryEl) {
+        const net = archive.summary.netBalance;
+        const netClass = net >= 0 ? 'income-val' : 'expense-val';
+        summaryEl.innerHTML = `
+            <div class="archive-detail-stat">
+                <div class="archive-detail-stat-label">Total Pemasukan</div>
+                <div class="archive-detail-stat-value income-val">${formatCurrency(archive.summary.totalIncome, activeCurrency)}</div>
+            </div>
+            <div class="archive-detail-stat">
+                <div class="archive-detail-stat-label">Total Pengeluaran</div>
+                <div class="archive-detail-stat-value expense-val">${formatCurrency(archive.summary.totalExpense, activeCurrency)}</div>
+            </div>
+            <div class="archive-detail-stat">
+                <div class="archive-detail-stat-label">Selisih Bersih</div>
+                <div class="archive-detail-stat-value ${netClass}">${formatCurrency(net, activeCurrency)}</div>
+            </div>
+            <div class="archive-detail-stat">
+                <div class="archive-detail-stat-label">Total Transaksi</div>
+                <div class="archive-detail-stat-value net-val">${archive.summary.transactionCount}</div>
+            </div>
+        `;
+    }
+    
+    // Render transactions table
+    const tbody = document.getElementById('archive-detail-table-body');
+    if (tbody) {
+        tbody.innerHTML = '';
+        if (!archive.transactions || archive.transactions.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" class="empty-list" style="text-align:center;">Tidak ada transaksi di arsip ini.</td></tr>';
+        } else {
+            const sorted = [...archive.transactions].sort((a, b) => new Date(b.date) - new Date(a.date));
+            sorted.forEach(t => {
+                const tr = document.createElement('tr');
+                const badgeClass = t.type === 'masuk' ? 'badge-income' : 'badge-expense';
+                const typeLabel = t.type === 'masuk' ? 'Masuk' : 'Keluar';
+                tr.innerHTML = `
+                    <td>${formatDateStr(t.date)}</td>
+                    <td><span class="badge ${badgeClass}">${typeLabel}</span></td>
+                    <td>${t.category || '-'}</td>
+                    <td style="font-weight: 700;">${formatCurrency(t.amount, t.currency || 'IDR')}</td>
+                    <td>${t.note || '-'}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+    }
+    
+    // Setup delete button
+    const deleteBtn = document.getElementById('archive-delete-btn');
+    if (deleteBtn) {
+        deleteBtn.onclick = () => deleteArchive(archiveId);
+    }
+    
+    openModal('archiveDetailModal');
+}
+
+function manualArchive() {
+    const now = new Date();
+    const thisMonth = now.getMonth() + 1;
+    const thisYear = now.getFullYear();
+    const archiveId = `archive-${thisYear}-${String(thisMonth).padStart(2, '0')}`;
+    const label = getMonthLabel(thisMonth, thisYear);
+    
+    // Cek transaksi bulan ini
+    const monthTransactions = state.transactions.filter(t => {
+        if (!t.date) return false;
+        const d = new Date(t.date);
+        return d.getMonth() + 1 === thisMonth && d.getFullYear() === thisYear;
+    });
+    
+    if (monthTransactions.length === 0) {
+        alert('Tidak ada transaksi bulan ini untuk diarsipkan.');
+        return;
+    }
+    
+    // Cek duplikat
+    const existing = state.archives.find(a => a.id === archiveId);
+    if (existing) {
+        showConfirm(`Arsip ${label} sudah ada (${existing.summary.transactionCount} transaksi). Ganti dengan data terbaru?`, () => {
+            state.archives = state.archives.filter(a => a.id !== archiveId);
+            executeManualArchive(archiveId, thisMonth, thisYear, label, monthTransactions);
+        });
+        return;
+    }
+    
+    showConfirm(`Arsipkan semua ${monthTransactions.length} transaksi bulan ${label}? Data transaksi akan dipindahkan ke arsip dan dihapus dari Arus Kas aktif.`, () => {
+        executeManualArchive(archiveId, thisMonth, thisYear, label, monthTransactions);
+    });
+}
+
+function executeManualArchive(archiveId, month, year, label, monthTransactions) {
+    let totalIncome = 0, totalExpense = 0;
+    monthTransactions.forEach(t => {
+        if (t.type === 'masuk') totalIncome += t.amount;
+        else if (t.type === 'keluar') totalExpense += t.amount;
+    });
+    
+    const archive = {
+        id: archiveId,
+        month,
+        year,
+        label,
+        archivedAt: new Date().toISOString(),
+        summary: {
+            totalIncome,
+            totalExpense,
+            netBalance: totalIncome - totalExpense,
+            transactionCount: monthTransactions.length
+        },
+        transactions: JSON.parse(JSON.stringify(monthTransactions))
+    };
+    
+    state.archives.push(archive);
+    
+    // Hapus transaksi bulan ini dari aktif
+    state.transactions = state.transactions.filter(t => {
+        if (!t.date) return true;
+        const d = new Date(t.date);
+        return !(d.getMonth() + 1 === month && d.getFullYear() === year);
+    });
+    
+    saveDataToLocalStorage();
+    showArchiveNotification([label]);
+    renderArchives();
+    updateDashboardUI();
+}
+
+function deleteArchive(archiveId) {
+    const archive = state.archives.find(a => a.id === archiveId);
+    if (!archive) return;
+    
+    showConfirm(`Hapus arsip "${archive.label}" (${archive.summary.transactionCount} transaksi)? Data transaksi dalam arsip ini akan dikembalikan ke Arus Kas aktif.`, () => {
+        if (archive.transactions && archive.transactions.length > 0) {
+            state.transactions = state.transactions.concat(archive.transactions);
+        }
+        state.archives = state.archives.filter(a => a.id !== archiveId);
+        saveDataToLocalStorage();
+        closeModal('archiveDetailModal');
+        renderArchives();
+        updateDashboardUI();
+    });
+}
+
+function toggleMobileMenu(show) {
+    const overlay = document.getElementById('mobileMenuOverlay');
+    const drawer = overlay?.querySelector('.mobile-menu-drawer');
+    if (!overlay || !drawer) return;
+    
+    if (show) {
+        overlay.style.display = 'block';
+        setTimeout(() => {
+            drawer.style.transform = 'translateY(0)';
+        }, 10);
+    } else {
+        drawer.style.transform = 'translateY(100%)';
+        setTimeout(() => {
+            overlay.style.display = 'none';
+        }, 300);
+    }
+}
+
 // GLOBAL KEYBOARD SHORTCUTS (ESC & SPACE)
 document.addEventListener('keydown', (e) => {
     // ESC: Menutup modal aktif (atau batalkan konfirmasi)
@@ -2478,3 +2997,176 @@ document.addEventListener('keydown', (e) => {
         }
     }
 });
+
+
+
+
+/* ==========================================
+   50/30/20 BUDGETING ENGINE & UI RENDERER
+   ========================================== */
+function renderBudgetingUI(isHidden, maskText) {
+    const plannedInput = document.getElementById('planned-salary-input');
+    if (!plannedInput) return;
+
+    // Load planned salary from localStorage (defaulting to 0)
+    let plannedSalary = parseFloat(localStorage.getItem('fina_planned_income')) || 0;
+    
+    // Set formatted value to input if not active/focused
+    if (document.activeElement !== plannedInput) {
+        plannedInput.value = plannedSalary > 0 ? new Intl.NumberFormat('id-ID').format(plannedSalary) : '';
+    }
+
+    // Targets based on 50/30/20
+    const targetNeeds = plannedSalary * 0.5;
+    const targetWants = plannedSalary * 0.3;
+    const targetSavings = plannedSalary * 0.2;
+
+    // Calculate actuals for this month (activeCurrency only)
+    const now = new Date();
+    const thisMonth = now.getMonth() + 1;
+    const thisYear = now.getFullYear();
+
+    let actualNeeds = 0;
+    let actualWants = 0;
+    let actualSavings = 0;
+
+    // 1. Calculate from Transactions (Expenses only)
+    state.transactions.forEach(t => {
+        const tCurr = t.currency || 'IDR';
+        if (tCurr === activeCurrency && t.date) {
+            const d = new Date(t.date);
+            if (d.getMonth() + 1 === thisMonth && d.getFullYear() === thisYear && t.type === 'keluar') {
+                const category = t.category || '';
+                if (category === 'Kebutuhan Rumah' || category === 'Makanan' || category === 'Transportasi') {
+                    actualNeeds += t.amount;
+                } else if (category === 'Hiburan' || category === 'Belanja' || category === 'Lainnya') {
+                    actualWants += t.amount;
+                } else if (category === 'Investasi') {
+                    actualSavings += t.amount;
+                }
+            }
+        }
+    });
+
+    // 2. Calculate from goals (savings allocated to goals this month)
+    state.goals.forEach(g => {
+        const gCurr = g.currency || 'IDR';
+        if (gCurr === activeCurrency && g.history) {
+            g.history.forEach(h => {
+                if (h.date) {
+                    const d = new Date(h.date);
+                    if (d.getMonth() + 1 === thisMonth && d.getFullYear() === thisYear) {
+                        if (h.type === 'tambah') {
+                            actualSavings += h.amount;
+                        } else if (h.type === 'ambil') {
+                            actualSavings -= h.amount;
+                        }
+                    }
+                }
+            });
+        }
+    });
+
+    // 3. Calculate from loans (repayments made or received this month)
+    state.loans.forEach(l => {
+        const lCurr = l.currency || 'IDR';
+        if (lCurr === activeCurrency && l.repayments) {
+            l.repayments.forEach(r => {
+                if (r.date) {
+                    const d = new Date(r.date);
+                    if (d.getMonth() + 1 === thisMonth && d.getFullYear() === thisYear) {
+                        if (l.type === 'hutang') {
+                            actualSavings += r.amount;
+                        }
+                    }
+                }
+            });
+        }
+    });
+
+    // Render Targets
+    document.getElementById('budget-needs-target').textContent = isHidden ? maskText : formatCurrency(targetNeeds, activeCurrency);
+    document.getElementById('budget-wants-target').textContent = isHidden ? maskText : formatCurrency(targetWants, activeCurrency);
+    document.getElementById('budget-savings-target').textContent = isHidden ? maskText : formatCurrency(targetSavings, activeCurrency);
+
+    // Render Actuals
+    document.getElementById('budget-needs-actual').textContent = isHidden ? maskText : formatCurrency(actualNeeds, activeCurrency);
+    document.getElementById('budget-wants-actual').textContent = isHidden ? maskText : formatCurrency(actualWants, activeCurrency);
+    document.getElementById('budget-savings-actual').textContent = isHidden ? maskText : formatCurrency(actualSavings, activeCurrency);
+
+    // Progress percentage
+    const pctNeeds = targetNeeds > 0 ? (actualNeeds / targetNeeds) * 100 : 0;
+    const pctWants = targetWants > 0 ? (actualWants / targetWants) * 100 : 0;
+    const pctSavings = targetSavings > 0 ? (actualSavings / targetSavings) * 100 : 0;
+
+    // Render Percentages
+    document.getElementById('budget-needs-percent').textContent = `${pctNeeds.toFixed(1)}% terpakai`;
+    document.getElementById('budget-wants-percent').textContent = `${pctWants.toFixed(1)}% terpakai`;
+    document.getElementById('budget-savings-percent').textContent = `${pctSavings.toFixed(1)}% terkumpul`;
+
+    // Render Progress Bars
+    const barNeeds = document.getElementById('budget-needs-progress');
+    const barWants = document.getElementById('budget-wants-progress');
+    const barSavings = document.getElementById('budget-savings-progress');
+
+    barNeeds.style.width = `${Math.min(100, pctNeeds)}%`;
+    barWants.style.width = `${Math.min(100, pctWants)}%`;
+    barSavings.style.width = `${Math.min(100, pctSavings)}%`;
+
+    // Render statuses and change bar color if exceeded/achieved
+    const statusNeeds = document.getElementById('budget-needs-status');
+    const statusWants = document.getElementById('budget-wants-status');
+    const statusSavings = document.getElementById('budget-savings-status');
+
+    // Needs
+    if (plannedSalary === 0) {
+        statusNeeds.textContent = 'Rencana gaji belum diset';
+        statusNeeds.style.color = 'var(--text-muted)';
+        barNeeds.style.background = 'linear-gradient(90deg, #0055ff, #00c8ff)';
+    } else if (pctNeeds > 100) {
+        statusNeeds.textContent = `Over-budget Rp ${new Intl.NumberFormat('id-ID').format(actualNeeds - targetNeeds)}`;
+        statusNeeds.style.color = 'var(--accent-red)';
+        barNeeds.style.background = 'linear-gradient(90deg, var(--accent-red), #ff3333)';
+    } else {
+        statusNeeds.textContent = `Sisa Rp ${new Intl.NumberFormat('id-ID').format(targetNeeds - actualNeeds)}`;
+        statusNeeds.style.color = 'var(--accent-green)';
+        barNeeds.style.background = 'linear-gradient(90deg, #0055ff, #00c8ff)';
+    }
+
+    // Wants
+    if (plannedSalary === 0) {
+        statusWants.textContent = 'Rencana gaji belum diset';
+        statusWants.style.color = 'var(--text-muted)';
+        barWants.style.background = 'linear-gradient(90deg, var(--accent-orange), var(--accent-red))';
+    } else if (pctWants > 100) {
+        statusWants.textContent = `Over-budget Rp ${new Intl.NumberFormat('id-ID').format(actualWants - targetWants)}`;
+        statusWants.style.color = 'var(--accent-red)';
+        barWants.style.background = 'linear-gradient(90deg, var(--accent-red), #ff3333)';
+    } else {
+        statusWants.textContent = `Sisa Rp ${new Intl.NumberFormat('id-ID').format(targetWants - actualWants)}`;
+        statusWants.style.color = 'var(--accent-green)';
+        barWants.style.background = 'linear-gradient(90deg, var(--accent-orange), var(--accent-red))';
+    }
+
+    // Savings
+    if (plannedSalary === 0) {
+        statusSavings.textContent = 'Rencana gaji belum diset';
+        statusSavings.style.color = 'var(--text-muted)';
+        barSavings.style.background = 'linear-gradient(90deg, #00cc66, #00ff88)';
+    } else if (pctSavings >= 100) {
+        statusSavings.textContent = 'Target tercapai! mantap!';
+        statusSavings.style.color = 'var(--accent-green)';
+        barSavings.style.background = 'linear-gradient(90deg, #00cc66, #00ff88)';
+    } else {
+        statusSavings.textContent = `Sisa alokasi Rp ${new Intl.NumberFormat('id-ID').format(targetSavings - actualSavings)}`;
+        statusSavings.style.color = 'var(--text-muted)';
+        barSavings.style.background = 'linear-gradient(90deg, #00cc66, #00ff88)';
+    }
+}
+
+function handlePlannedSalaryChange(input) {
+    formatInputCurrency(input);
+    const rawVal = parseFormattedNumber(input.value) || 0;
+    localStorage.setItem('fina_planned_income', rawVal);
+    updateDashboardUI();
+}
